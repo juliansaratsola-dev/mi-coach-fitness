@@ -30,6 +30,15 @@ El APK firmado de depuración queda en `app/build/outputs/apk/debug/app-debug.ap
 
 El módulo no usa el Android Gradle Plugin. `dl.google.com` (Google Maven) no es accesible en todos los entornos, así que `./gradlew :app:assembleDebug` compila con el toolchain local del SDK: `aapt2`, `d8`, `zipalign` y `apksigner`, más `kotlinc`. No hace falta red para el APK si el SDK y Kotlin ya están instalados. Los tests bajan JUnit desde Maven Central la primera vez.
 
+## Descargar e instalar el APK
+
+1. En GitHub abre la pestaña **Actions** → workflow **Build APK** → la última ejecución verde de `main` (o lánzalo con **Run workflow**).
+2. En **Artifacts** descarga `mi-coach-fitness-debug-apk` (es un zip; descomprímelo para obtener `app-debug.apk`).
+3. Pasa el APK al teléfono y ábrelo. Android pedirá permitir **instalar apps desconocidas** para la app que uses (Archivos, Chrome...). Acepta y pulsa Instalar.
+4. Alternativa por cable, con depuración USB activa: `adb install -r app-debug.apk`.
+
+Es un APK de depuración firmado con una clave de debug, solo para instalación manual.
+
 ## Permisos
 
 | Permiso | Para qué | Cómo se concede |
