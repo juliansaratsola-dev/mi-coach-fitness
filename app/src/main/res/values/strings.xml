@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Mi Coach Fitness</string>
+    <string name="monitor_description">Detecta capturas de pantalla mientras usas Garmin Connect y te pregunta si quieres analizarlas con Copilot.</string>
+    <string name="monitor_switch">Monitoreo activo</string>
+    <string name="status_running">Servicio en ejecución</string>
+    <string name="status_stopped">Servicio detenido</string>
+    <string name="status_line">%1$s\n%2$s</string>
+    <string name="garmin_filter_active">Filtro Garmin activo (ventana de 10 segundos).</string>
+    <string name="fallback_usage_missing">Sin acceso de uso: se notifican las capturas sin confirmar que Garmin estaba en primer plano.</string>
+    <string name="permission_summary">Notificaciones: %1$s\nFotos: %2$s\nAcceso de uso: %3$s</string>
+    <string name="state_granted">concedido</string>
+    <string name="state_missing">falta</string>
+    <string name="grant_permissions">Revisar permisos</string>
+    <string name="open_usage_settings">Abrir acceso de uso</string>
+    <string name="permissions_ok">Los permisos de notificación y fotos ya están concedidos.</string>
+    <string name="permissions_required">Hacen falta notificaciones y acceso a fotos para monitorear capturas.</string>
+    <string name="usage_settings_unavailable">No se pudo abrir el acceso de uso. Actívalo en Ajustes del sistema.</string>
+    <string name="service_start_failed">No se pudo iniciar el monitoreo.</string>
+    <string name="fg_channel_name">Monitoreo</string>
+    <string name="fg_channel_desc">Notificación permanente del monitoreo de capturas</string>
+    <string name="alert_channel_name">Capturas detectadas</string>
+    <string name="alert_channel_desc">Aviso para analizar una captura con Copilot</string>
+    <string name="fg_title">Mi Coach está monitoreando capturas</string>
+    <string name="fg_text">Buscando screenshots de Garmin Connect</string>
+    <string name="action_stop">Detener</string>
+    <string name="alert_title">Captura de Garmin detectada</string>
+    <string name="alert_text">¿Analizar con Copilot?</string>
+    <string name="action_analyze_copilot">Analizar con Copilot</string>
+    <string name="share_text">Analiza esta captura de Garmin Connect.</string>
+    <string name="no_share_target">No hay apps que puedan recibir la imagen.</string>
+    <string name="share_failed">No se pudo abrir el menú para compartir.</string>
+</resources>
