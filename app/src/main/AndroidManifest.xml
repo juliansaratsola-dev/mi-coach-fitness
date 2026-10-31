@@ -5,6 +5,7 @@
     android:versionCode="1"
     android:versionName="0.1.0">
 
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -43,6 +44,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".CoachActivity"
+            android:exported="false"
+            android:label="@string/coach_title"
+            android:launchMode="singleTop" />
 
         <activity
             android:name=".AnalyzeWithCopilotActivity"

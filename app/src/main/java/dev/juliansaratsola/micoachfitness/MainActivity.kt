@@ -8,6 +8,7 @@ import android.provider.Settings
 import android.util.Log
 import android.widget.Button
 import android.widget.CompoundButton
+import android.widget.EditText
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
@@ -39,6 +40,15 @@ class MainActivity : Activity() {
             requestMissingPermissions(enableAfter = false)
         }
         findViewById<Button>(R.id.usageSettingsButton).setOnClickListener { openUsageSettings() }
+        val keyInput = findViewById<EditText>(R.id.apiKeyInput)
+        keyInput.setText(prefs.geminiApiKey)
+        findViewById<Button>(R.id.saveKeyButton).setOnClickListener {
+            prefs.geminiApiKey = keyInput.text.toString()
+            Toast.makeText(this, R.string.key_saved, Toast.LENGTH_SHORT).show()
+        }
+        findViewById<Button>(R.id.openCoachButton).setOnClickListener {
+            startActivity(Intent(this, CoachActivity::class.java))
+        }
         refreshUi()
     }
 

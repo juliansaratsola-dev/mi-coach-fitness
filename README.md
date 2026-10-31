@@ -1,8 +1,8 @@
 # mi-coach-fitness
 
-Coach personal de running + calistenia con memoria persistente en el repo.
+Coach personal de running + calistenia con historial privado en el dispositivo.
 
-MVP Android (Kotlin) que vigila capturas de pantalla y, si Garmin Connect estuvo en primer plano, pregunta si quieres analizarlas con Copilot.
+App Android (Kotlin) que detecta capturas de Garmin Connect y permite acumularlas para un review estructurado con Gemini: notas del 1 al 10, comparativas con el historial, sugerencias y preguntas de seguimiento. También conserva la opción de compartir una captura con Copilot.
 
 ## Qué hace
 
@@ -10,8 +10,17 @@ MVP Android (Kotlin) que vigila capturas de pantalla y, si Garmin Connect estuvo
 2. Un `ForegroundService` registra un `ContentObserver` sobre `MediaStore.Images`.
 3. Una imagen nueva cuenta como screenshot si el nombre o la ruta contiene `Screenshots`, `screenshot` o `captura`.
 4. Con acceso de uso, se comprueba que `com.garmin.android.apps.connectmobile` estuvo en primer plano en una ventana de 10 segundos alrededor de la captura (`DATE_TAKEN`, o `DATE_ADDED` si no hay fecha de toma).
-5. Si coincide, aparece una notificación con la acción **Analizar con Copilot**. Esa acción abre un share intent (`ACTION_SEND`) con la URI `content://` de la imagen.
-6. La imagen no se sube a ningún servidor. El análisis lo hace la app que elijas en el menú de compartir.
+5. Si coincide, aparece una notificación para agregar la captura al Coach o compartirla con Copilot. Puedes acumular las capturas de estadísticas del mismo entrenamiento.
+6. El Coach envía las capturas elegidas, tus notas de sensaciones y hasta 8 sesiones anteriores a la API de Gemini. El historial se guarda en el almacenamiento privado de la app en el dispositivo; Gemini recibe esos datos al generar cada análisis.
+
+## Coach con Gemini
+
+1. Crea una API key de Gemini y guárdala en la pantalla principal. La clave queda en las preferencias privadas de la app en este dispositivo; no se incluye en el repositorio.
+2. Desde cada notificación de Garmin, pulsa **Agregar al Coach** para ir reuniendo las capturas de resumen y estadísticas.
+3. Abre **Coach**, añade opcionalmente cómo te sentiste y pulsa **Generar review**.
+4. El review muestra una nota general y notas por sección, los datos detectados, una comparativa con las últimas sesiones, sugerencias concretas y preguntas de seguimiento. La sesión analizada pasa al historial local para contextualizar próximos reviews.
+
+La app conserva el historial y la clave localmente. Las capturas que envías para analizar, las notas que escribes y el contexto de hasta 8 sesiones se transmiten a Google Gemini; no se envían automáticamente al detectar la captura. Puedes vaciar las capturas pendientes antes de analizarlas. La evaluación es orientativa, no médica, y no debería usarse para diagnosticar lesiones.
 
 ## Requisitos para compilar
 
@@ -43,11 +52,12 @@ Es un APK de depuración firmado con una clave de debug, solo para instalación 
 
 | Permiso | Para qué | Cómo se concede |
 | --- | --- | --- |
-| Notificaciones (`POST_NOTIFICATIONS`, Android 13+) | Servicio en primer plano y aviso de análisis | Diálogo de la app |
+| Notificaciones (`POST_NOTIFICATIONS`, Android 13+) | Servicio en primer plano y aviso del Coach | Diálogo de la app |
 | Fotos (`READ_MEDIA_IMAGES` en Android 13+, `READ_EXTERNAL_STORAGE` en 11–12) | Leer `MediaStore.Images` | Diálogo de la app. Hay que elegir **permitir todas las fotos**, no solo una selección |
 | Acceso de uso (`PACKAGE_USAGE_STATS`) | Saber si Garmin Connect estaba activa | Ajustes del sistema → Acceso de uso. No es un permiso runtime normal |
 | Servicio en primer plano (`FOREGROUND_SERVICE` + `FOREGROUND_SERVICE_SPECIAL_USE`) | Mantener el observer con la app cerrada | Se declara en el manifest. En Android 14+ el tipo es `specialUse` |
 | Arranque (`RECEIVE_BOOT_COMPLETED`) | Reanudar el monitoreo si el switch quedó activo | Automático |
+| Internet (`INTERNET`) | Enviar una solicitud a Gemini solo al generar un review | Declarado en el manifest |
 
 Sin acceso de uso el filtro Garmin no puede ejecutarse. En ese caso el MVP sigue y notifica cualquier screenshot reciente (fallback), y la pantalla lo indica.
 
@@ -59,13 +69,14 @@ Sin acceso de uso el filtro Garmin no puede ejecutarse. En ese caso el MVP sigue
 4. Pulsa **Abrir acceso de uso** y activa Mi Coach Fitness.
 5. Activa el switch **Monitoreo activo**. Debe quedar una notificación permanente de monitoreo.
 6. Abre Garmin Connect (`com.garmin.android.apps.connectmobile`) y toma una captura. El archivo suele llamarse `Screenshot_….png` o `Captura de pantalla….png` y vivir en `Pictures/Screenshots`.
-7. En unos segundos debe llegar la notificación **Captura de Garmin detectada** con la acción **Analizar con Copilot**.
-8. Al pulsarla se abre el menú de compartir con la URI de esa imagen. Elige Copilot (o cualquier app que acepte `image/*`).
-9. Desactiva el switch, o pulsa **Detener** en la notificación permanente, y comprueba que el observer se va.
+7. En unos segundos debe llegar la notificación **Captura de Garmin detectada**. Pulsa **Agregar al Coach** para acumular cada captura; repite con las estadísticas que quieras incluir.
+8. Abre **Mi Coach Fitness**, guarda tu API key de Gemini y entra en **Coach**. Añade cómo te sentiste (opcional) y genera el review.
+9. Comprueba las notas, sugerencias y comparativa; la sesión se conserva en el historial local para próximos reviews. **Analizar con Copilot** sigue disponible como alternativa.
+10. Desactiva el switch, o pulsa **Detener** en la notificación permanente, y comprueba que el observer se va.
 
 Prueba del fallback: deja el monitoreo activo sin conceder acceso de uso, toma un screenshot de cualquier app y confirma que igual aparece la notificación. Con el acceso de uso concedido, un screenshot tomado fuera de la ventana de 10 s de Garmin no debe notificar.
 
-Los tests de JVM cubren los marcadores de ruta y la ventana de 10 s:
+Los tests de JVM cubren los marcadores de ruta, la ventana de 10 s y el contexto comparativo del Coach:
 
 ```bash
 ./gradlew :app:testDebugUnitTest
@@ -83,11 +94,14 @@ Los tests de JVM cubren los marcadores de ruta y la ventana de 10 s:
 - Android 12+ restringe arrancar actividades desde el fondo. La acción de la notificación abre una activity interna no exportada, y esa activity lanza el share intent y concede permiso de lectura temporal sobre la URI. Así el destino recibe la imagen.
 - Android 14+ obliga a declarar un tipo de foreground service. Este monitoreo no encaja en `dataSync` ni `mediaProjection`, así que usa `specialUse`. Instalar en local vale; publicar en Play exige declarar ese caso de uso.
 - El receiver de arranque solo reanuda el servicio si el switch estaba activo y los permisos runtime siguen concedidos. Si el sistema bloquea el FGS en el boot, hay que volver a abrir la app.
-- La app no pide `MANAGE_EXTERNAL_STORAGE` ni accede a la red.
+- La app no pide `MANAGE_EXTERNAL_STORAGE`. Solo accede a la red cuando se solicita un review de Gemini.
 
 ## Mapa rápido
 
 - `MainActivity`: switch de monitoreo y estado de permisos.
+- `CoachActivity`: capturas pendientes, sensaciones, review con notas, sugerencias e historial.
+- `GeminiClient` / `CoachPrompt`: solicitud de análisis multimodal y contexto comparativo.
+- `WorkoutStore` / `WorkoutRecord`: historial local de métricas y reviews.
 - `ScreenshotMonitorService`: foreground service + `ContentObserver`.
 - `ScreenshotClassifier` / `GarminActivityWindow`: reglas puras, con tests.
 - `GarminUsageChecker`: puente a `UsageStatsManager`.

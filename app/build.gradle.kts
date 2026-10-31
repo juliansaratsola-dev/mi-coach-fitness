@@ -183,7 +183,7 @@ tasks.register("assembleDebug") {
 
 tasks.register("testDebugUnitTest") {
     group = "verification"
-    description = "Run JVM unit tests for screenshot and Garmin window rules"
+    description = "Run JVM unit tests for screenshot detection, Garmin window rules, and coach history prompts"
     val junitFiles = junitConfig
     doLast {
         val kotlinc = resolveKotlinc()
@@ -194,6 +194,8 @@ tasks.register("testDebugUnitTest") {
         val sources = listOf(
             project.file("src/main/java/dev/juliansaratsola/micoachfitness/ScreenshotClassifier.kt"),
             project.file("src/main/java/dev/juliansaratsola/micoachfitness/GarminActivityWindow.kt"),
+            project.file("src/main/java/dev/juliansaratsola/micoachfitness/WorkoutRecord.kt"),
+            project.file("src/main/java/dev/juliansaratsola/micoachfitness/CoachPrompt.kt"),
             project.file("src/test/java")
         )
         runTool(

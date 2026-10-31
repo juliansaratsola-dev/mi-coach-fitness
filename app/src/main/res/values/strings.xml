@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Mi Coach Fitness</string>
-    <string name="monitor_description">Detecta capturas de pantalla mientras usas Garmin Connect y te pregunta si quieres analizarlas con Copilot.</string>
+    <string name="monitor_description">Detecta capturas de pantalla mientras usas Garmin Connect y te deja enviarlas al Coach: un review con notas del 1 al 10 que compara con tu historial.</string>
     <string name="monitor_switch">Monitoreo activo</string>
     <string name="status_running">Servicio en ejecución</string>
     <string name="status_stopped">Servicio detenido</string>
@@ -20,14 +20,33 @@
     <string name="fg_channel_name">Monitoreo</string>
     <string name="fg_channel_desc">Notificación permanente del monitoreo de capturas</string>
     <string name="alert_channel_name">Capturas detectadas</string>
-    <string name="alert_channel_desc">Aviso para analizar una captura con Copilot</string>
+    <string name="alert_channel_desc">Aviso para agregar capturas al Coach o compartirlas con Copilot</string>
     <string name="fg_title">Mi Coach está monitoreando capturas</string>
     <string name="fg_text">Buscando screenshots de Garmin Connect</string>
     <string name="action_stop">Detener</string>
     <string name="alert_title">Captura de Garmin detectada</string>
-    <string name="alert_text">¿Analizar con Copilot?</string>
+    <string name="alert_text">Agrégala al Coach (se pueden sumar las 3 capturas) o analízala con Copilot.</string>
     <string name="action_analyze_copilot">Analizar con Copilot</string>
     <string name="share_text">Analiza esta captura de Garmin Connect.</string>
     <string name="no_share_target">No hay apps que puedan recibir la imagen.</string>
     <string name="share_failed">No se pudo abrir el menú para compartir.</string>
+    <string name="coach_title">Coach</string>
+    <string name="coach_pending">Capturas listas para analizar: %1$d</string>
+    <string name="coach_notes_hint">Sensaciones (opcional): tibias, gemelos, ánimo…</string>
+    <string name="coach_generate">Generar review</string>
+    <string name="coach_generating">Analizando…</string>
+    <string name="coach_clear">Vaciar capturas</string>
+    <string name="coach_missing_key">Primero guarda tu API key de Gemini en la pantalla principal.</string>
+    <string name="coach_error">No se pudo generar el review: %1$s</string>
+    <string name="coach_history_error">No se pudo leer el historial guardado.</string>
+    <string name="coach_comparison">📈 Comparativa con tus %1$d sesiones previas</string>
+    <string name="coach_suggestions">💡 Sugerencias</string>
+    <string name="coach_followup">❓ Para la próxima</string>
+    <string name="coach_history">🗂 Historial</string>
+    <string name="action_add_to_coach">Agregar al Coach</string>
+    <string name="open_coach">Abrir Coach</string>
+    <string name="gemini_key_hint">API key de Gemini</string>
+    <string name="save_key">Guardar API key</string>
+    <string name="key_saved">API key guardada.</string>
+    <string name="coach_privacy_notice">Para generar un review, se envían a Google Gemini las capturas seleccionadas, tus sensaciones y hasta 8 entrenamientos guardados. El historial y la API key se guardan en este dispositivo.</string>
 </resources>
