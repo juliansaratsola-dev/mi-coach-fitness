@@ -52,6 +52,12 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".CoachActivity"
+            android:exported="false"
+            android:label="@string/coach_title"
+            android:launchMode="singleTop" />
+
         <activity-alias
             android:name=".HealthPermissionRationale"
             android:exported="true"
@@ -62,12 +68,6 @@
                 <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
             </intent-filter>
         </activity-alias>
-
-        <activity
-            android:name=".CoachActivity"
-            android:exported="false"
-            android:label="@string/coach_title"
-            android:launchMode="singleTop" />
 
         <activity
             android:name=".AnalyzeWithCopilotActivity"
