@@ -69,6 +69,10 @@
         </service>
 
         <receiver
+            android:name=".AddCaptureReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name=".BootCompletedReceiver"
             android:exported="true"
             android:permission="android.permission.RECEIVE_BOOT_COMPLETED">
