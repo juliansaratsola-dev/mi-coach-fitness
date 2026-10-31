@@ -47,4 +47,17 @@ class CoachPromptTest {
         val prompt = CoachPrompt.userPrompt(history, "2026-10-31")
         assertEquals(CoachPrompt.HISTORY_LIMIT, prompt.lines().count { it.startsWith("- ") })
     }
+
+    @Test
+    fun metricGroupsListOnlyAvailableValues() {
+        val base = record("2026-10-30", 328, 147, 7)
+        val full = base.copy(
+            contactMs = 249, verticalOscCm = 8.3, verticalRatioPct = 8.2, strideM = 1.02, powerW = 276, maxPowerW = 339
+        )
+        val groups = full.metricGroups().toMap()
+        assertEquals("249 ms", groups.getValue("Dinámica de carrera").toMap()["Tiempo de contacto"])
+        assertEquals("8.2 %", groups.getValue("Dinámica de carrera").toMap()["Ratio vertical"])
+        assertEquals("339 W", groups.getValue("Potencia").toMap()["Potencia máxima"])
+        assertTrue(!base.copy(powerW = null).metricGroups().toMap().containsKey("Potencia"))
+    }
 }
