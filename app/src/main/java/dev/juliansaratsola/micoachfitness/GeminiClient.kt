@@ -24,7 +24,7 @@ class GeminiClient(private val context: Context, private val apiKey: String) {
         workoutData: String? = null
     ): JSONObject {
         val parts = JSONArray()
-        parts.put(JSONObject().put("text", CoachPrompt.userPrompt(history, todayIso, notes, workoutData)))
+        parts.put(JSONObject().put("text", CoachPrompt.userPrompt(history, todayIso, notes, workoutData, images.isNotEmpty())))
         for (uri in images) {
             parts.put(
                 JSONObject().put(

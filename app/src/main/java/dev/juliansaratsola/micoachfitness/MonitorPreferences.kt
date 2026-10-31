@@ -29,6 +29,12 @@ class MonitorPreferences(context: Context) {
             prefs.edit().putLong(KEY_HC_END, value).apply()
         }
 
+    var healthOptionalAsked: Boolean
+        get() = prefs.getBoolean(KEY_HC_OPT, false)
+        set(value) {
+            prefs.edit().putBoolean(KEY_HC_OPT, value).apply()
+        }
+
     var healthWatchEnabled: Boolean
         get() = prefs.getBoolean(KEY_HC_WATCH, false)
         set(value) {
@@ -68,6 +74,7 @@ class MonitorPreferences(context: Context) {
         private const val KEY_SETUP = "setup_shown"
         private const val KEY_API = "gemini_api_key"
         private const val KEY_HC_END = "hc_last_session_end"
+        private const val KEY_HC_OPT = "hc_optional_asked"
         private const val KEY_HC_WATCH = "hc_watch"
         private const val KEY_PENDING = "pending_captures"
         private const val MAX_HANDLED = 50

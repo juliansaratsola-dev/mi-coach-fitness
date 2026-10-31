@@ -73,7 +73,8 @@ No infieras lesiones, zonas cardíacas ni riesgos biomecánicos solo a partir de
         history: List<WorkoutRecord>,
         todayIso: String,
         notes: String? = null,
-        workoutData: String? = null
+        workoutData: String? = null,
+        withImages: Boolean = false
     ): String {
         val recent = history.takeLast(HISTORY_LIMIT)
         val sb = StringBuilder()
@@ -81,7 +82,8 @@ No infieras lesiones, zonas cardíacas ni riesgos biomecánicos solo a partir de
         if (workoutData.isNullOrBlank()) {
             sb.append("¿Qué opinas de mi entrenamiento? Las imágenes adjuntas son las estadísticas de Garmin Connect.\n\n")
         } else {
-            sb.append("¿Qué opinas de mi entrenamiento? No hay capturas: estos son los datos que mi Garmin sincronizó con Health Connect.\n")
+            sb.append("¿Qué opinas de mi entrenamiento? Estos son los datos que mi Garmin sincronizó con Health Connect; para distancia, duración, ritmo y FC son la fuente fiable.\n")
+            if (withImages) sb.append("Las imágenes adjuntas son capturas de Garmin Connect del mismo entrenamiento: úsalas solo para las métricas que faltan abajo (zancada, contacto con el suelo, oscilación, TE, Body Battery, temperatura). Si una cifra choca con Health Connect, prevalece Health Connect.\n")
             sb.append(workoutData.trim()).append("\n\n")
         }
         if (recent.isEmpty()) {
