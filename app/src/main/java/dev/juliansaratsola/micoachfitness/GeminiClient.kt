@@ -67,7 +67,7 @@ class GeminiClient(private val context: Context, private val apiKey: String) {
                 }
             }
         }
-        throw CoachException("Gemini está saturado. Intenta de nuevo en unos minutos. (${last?.message.orEmpty()})")
+        throw CoachException("Gemini está saturado en este momento. Intenta de nuevo en unos minutos. (${last?.message.orEmpty()})")
     }
 
     /** Asks the API which models this key can use, so the app does not depend on a retired model name. */
@@ -83,7 +83,7 @@ class GeminiClient(private val context: Context, private val apiKey: String) {
                 }
             }
         }
-        val ranked = ModelPicker.rankFlash(names)
+        val ranked = ModelPicker.fallbackOrder(names)
         if (ranked.isEmpty()) throw CoachException("No hay un modelo Gemini Flash disponible para esta clave.")
         return ranked.map { "models/$it" }
     }
