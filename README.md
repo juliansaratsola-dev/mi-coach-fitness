@@ -19,8 +19,9 @@ App Android (Kotlin) que detecta capturas de Garmin Connect y permite acumularla
 2. Desde cada notificación de Garmin, pulsa **Agregar al Coach** para ir reuniendo las capturas de resumen y estadísticas.
 3. Abre **Coach**, añade opcionalmente cómo te sentiste y pulsa **Generar review**.
 4. El review muestra una nota general y notas por sección, los datos detectados, una comparativa con las últimas sesiones, sugerencias concretas y preguntas de seguimiento. La sesión analizada pasa al historial local para contextualizar próximos reviews.
+5. Al final de **Coach**, puedes conversar libremente con la IA sobre la review, tus sensaciones y la evolución de tu historial. La conversación también se guarda localmente y cada respuesta usa la review más reciente y hasta 8 sesiones como contexto.
 
-La app conserva el historial y la clave localmente. Las capturas que envías para analizar, las notas que escribes y el contexto de hasta 8 sesiones se transmiten a Google Gemini; no se envían automáticamente al detectar la captura. Puedes vaciar las capturas pendientes antes de analizarlas. La evaluación es orientativa, no médica, y no debería usarse para diagnosticar lesiones.
+La app conserva el historial, la conversación y la clave localmente. Al chatear, el mensaje, hasta 24 mensajes recientes y el contexto de hasta 8 sesiones (incluida la última review) se transmiten a Google Gemini. Las capturas que envías para analizar y tus notas también se transmiten al generar un review; no se envían automáticamente al detectar una captura. Puedes vaciar las capturas pendientes antes de analizarlas. La evaluación es orientativa, no médica, y no debería usarse para diagnosticar lesiones.
 
 ## Requisitos para compilar
 
@@ -57,7 +58,7 @@ Es un APK de depuración firmado con una clave de debug, solo para instalación 
 | Acceso de uso (`PACKAGE_USAGE_STATS`) | Saber si Garmin Connect estaba activa | Ajustes del sistema → Acceso de uso. No es un permiso runtime normal |
 | Servicio en primer plano (`FOREGROUND_SERVICE` + `FOREGROUND_SERVICE_SPECIAL_USE`) | Mantener el observer con la app cerrada | Se declara en el manifest. En Android 14+ el tipo es `specialUse` |
 | Arranque (`RECEIVE_BOOT_COMPLETED`) | Reanudar el monitoreo si el switch quedó activo | Automático |
-| Internet (`INTERNET`) | Enviar una solicitud a Gemini solo al generar un review | Declarado en el manifest |
+| Internet (`INTERNET`) | Enviar solicitudes a Gemini al generar un review o conversar en el chat | Declarado en el manifest |
 
 Sin acceso de uso el filtro Garmin no puede ejecutarse. En ese caso el MVP sigue y notifica cualquier screenshot reciente (fallback), y la pantalla lo indica.
 
@@ -103,8 +104,9 @@ Los tests de JVM cubren los marcadores de ruta, la ventana de 10 s y el contexto
 ## Mapa rápido
 
 - `MainActivity` (Inicio): switch de monitoreo. `SettingsActivity` (Config): permisos, acceso de uso y API key. `BottomNav`: barra inferior de 4 pestañas (Inicio, Coach, Próximamente, Config).
-- `CoachActivity`: capturas pendientes, sensaciones, review con notas, sugerencias e historial.
-- `GeminiClient` / `CoachPrompt`: solicitud de análisis multimodal y contexto comparativo.
+- `CoachActivity`: capturas pendientes, review, historial y chat con el coach.
+- `GeminiClient` / `CoachPrompt`: análisis multimodal, comparativas y conversación contextual.
+- `CoachChatStore`: persistencia local de la conversación del Coach.
 - `WorkoutStore` / `WorkoutRecord`: historial local de métricas y reviews.
 - `ScreenshotMonitorService`: foreground service + `ContentObserver`.
 - `ScreenshotClassifier` / `GarminActivityWindow`: reglas puras, con tests.

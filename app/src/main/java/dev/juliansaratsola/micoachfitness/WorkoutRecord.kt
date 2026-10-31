@@ -93,13 +93,18 @@ data class WorkoutRecord(
         avgHr?.let { parts += "FC media $it" }
         maxHr?.let { parts += "FC max $it" }
         cadence?.let { parts += "cadencia $it" }
+        maxCadence?.let { parts += "cadencia máx. $it" }
         strideM?.let { parts += "zancada %.2f m".format(java.util.Locale.US, it) }
         contactMs?.let { parts += "contacto suelo $it ms" }
         verticalOscCm?.let { parts += "osc. vertical %.1f cm".format(java.util.Locale.US, it) }
+        verticalRatioPct?.let { parts += "ratio vertical %.1f%%".format(java.util.Locale.US, it) }
         powerW?.let { parts += "potencia $it W" }
+        maxPowerW?.let { parts += "potencia máx. $it W" }
+        ascentM?.let { parts += "ascenso $it m" }
         tempC?.let { parts += "temp $it°C" }
         aerobicTe?.let { parts += "TE aeróbico %.1f".format(java.util.Locale.US, it) }
-        verticalRatioPct?.let { parts += "ratio vertical %.1f%%".format(java.util.Locale.US, it) }
+        anaerobicTe?.let { parts += "TE anaeróbico %.1f".format(java.util.Locale.US, it) }
+        totalKcal?.let { parts += "$it kcal" }
         bodyBatteryImpact?.let { parts += "Body Battery $it" }
         val scores = sections.joinToString(", ") { "${it.key}=${it.score}" }
         parts += "notas: general=$overallScore" + if (scores.isNotEmpty()) ", $scores" else ""

@@ -60,4 +60,23 @@ class CoachPromptTest {
         assertEquals("339 W", groups.getValue("Potencia").toMap()["Potencia máxima"])
         assertTrue(!base.copy(powerW = null).metricGroups().toMap().containsKey("Potencia"))
     }
+
+    @Test
+    fun chatContextIncludesLatestReviewAndAvoidsInventedBenchmarks() {
+        val latest = record("2026-10-30", 328, 147, 7).copy(
+            headline = "Rodaje estable",
+            maxPowerW = 340,
+            verticalRatioPct = 8.2,
+            comparison = "Ritmo similar a la sesión anterior.",
+            suggestions = listOf("Prioriza el descanso."),
+            followUpQuestions = listOf("¿Cómo te sentiste?")
+        )
+        val prompt = CoachPrompt.chatSystemInstruction(listOf(latest))
+        assertTrue(prompt.contains("Review más reciente (2026-10-30): 7/10 — Rodaje estable"))
+        assertTrue(prompt.contains("Potencia máxima: 340 W"))
+        assertTrue(prompt.contains("Ratio vertical: 8.2 %"))
+        assertTrue(prompt.contains("Ritmo similar a la sesión anterior."))
+        assertTrue(prompt.contains("Prioriza el descanso."))
+        assertTrue(prompt.contains("No inventes métricas, edad, peso"))
+    }
 }
