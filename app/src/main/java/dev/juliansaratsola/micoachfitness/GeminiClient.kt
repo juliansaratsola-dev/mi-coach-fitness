@@ -11,7 +11,7 @@ import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 
-class CoachException(message: String, val retryable: Boolean = false) : Exception(message)
+class CoachException(message: String, val retryable: Boolean = false, val modelUnavailable: Boolean = false) : Exception(message)
 
 /** Minimal Gemini REST client: sends screenshots + history prompt and returns the structured JSON review. */
 class GeminiClient(private val context: Context, private val apiKey: String) {
@@ -61,8 +61,9 @@ class GeminiClient(private val context: Context, private val apiKey: String) {
                 try {
                     return request("$BASE/$model:generateContent", "POST", payload)
                 } catch (error: CoachException) {
-                    if (!error.retryable) throw error
+                    if (!error.retryable && !error.modelUnavailable) throw error
                     last = error
+                    if (error.modelUnavailable) break
                     if (attempt < ATTEMPTS_PER_MODEL - 1) Thread.sleep(3_000L * (attempt + 1))
                 }
             }
@@ -106,7 +107,7 @@ class GeminiClient(private val context: Context, private val apiKey: String) {
                 val message = runCatching {
                     JSONObject(detail).getJSONObject("error").getString("message")
                 }.getOrDefault("")
-                throw CoachException("Gemini respondió $code. $message".trim(), retryable = code == 429 || code >= 500)
+                throw CoachException("Gemini respondió $code. $message".trim(), retryable = code == 429 || code >= 500, modelUnavailable = code == 404)
             }
             return connection.inputStream.bufferedReader().use { it.readText() }
         } finally {
