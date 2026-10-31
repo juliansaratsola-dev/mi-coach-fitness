@@ -31,6 +31,7 @@ class CoachActivity : Activity() {
     private lateinit var generateButton: Button
     private lateinit var reviewContainer: LinearLayout
     private var busy = false
+    private var autoGenerate = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,6 +40,7 @@ class CoachActivity : Activity() {
         buildUi()
         if (savedInstanceState == null) handleIntent(intent)
         refresh()
+        runPendingAutoGenerate()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -46,9 +48,20 @@ class CoachActivity : Activity() {
         setIntent(intent)
         handleIntent(intent)
         refresh()
+        runPendingAutoGenerate()
+    }
+
+    private fun runPendingAutoGenerate() {
+        if (!autoGenerate) return
+        autoGenerate = false
+        generate()
     }
 
     private fun handleIntent(intent: Intent?) {
+        if (intent?.getBooleanExtra(EXTRA_AUTO_GENERATE, false) == true) {
+            autoGenerate = true
+            intent.removeExtra(EXTRA_AUTO_GENERATE)
+        }
         val uri = intent?.data ?: return
         if (uri.scheme == "content" && uri.authority?.contains("media") == true) {
             prefs.addPendingCapture(uri.toString())
@@ -206,5 +219,9 @@ class CoachActivity : Activity() {
             if (color != null) setTextColor(color)
             visibility = View.VISIBLE
         }
+    }
+
+    companion object {
+        const val EXTRA_AUTO_GENERATE = "auto_generate"
     }
 }

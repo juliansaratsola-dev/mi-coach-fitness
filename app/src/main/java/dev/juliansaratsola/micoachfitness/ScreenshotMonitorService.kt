@@ -169,25 +169,23 @@ class ScreenshotMonitorService : Service() {
     private fun notifyAnalyze(image: CapturedImage) {
         if (destroyed || !PermissionHelper.hasNotificationAccess(this)) return
         if (image.uri.scheme != ContentResolver.SCHEME_CONTENT) return
-        val analyze = Intent(this, AnalyzeWithCopilotActivity::class.java).apply {
-            data = image.uri
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
         val requestCode = (image.id % Int.MAX_VALUE).toInt()
+        val analyze = Intent(this, CoachActivity::class.java).apply {
+            data = image.uri
+            putExtra(CoachActivity.EXTRA_AUTO_GENERATE, true)
+            addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
         val pending = PendingIntent.getActivity(
             this,
             requestCode,
             analyze,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val coach = Intent(this, CoachActivity::class.java).apply {
-            data = image.uri
-            addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        val coachPending = PendingIntent.getActivity(
+        val add = Intent(this, AddCaptureReceiver::class.java).apply { data = image.uri }
+        val addPending = PendingIntent.getBroadcast(
             this,
             requestCode,
-            coach,
+            add,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val notification = Notification.Builder(this, CHANNEL_ALERTS)
@@ -195,13 +193,13 @@ class ScreenshotMonitorService : Service() {
             .setContentTitle(getString(R.string.alert_title))
             .setContentText(getString(R.string.alert_text))
             .setStyle(Notification.BigTextStyle().bigText(getString(R.string.alert_text)))
-            .setAutoCancel(true)
-            .setContentIntent(coachPending)
+            .setAutoCancel(false)
+            .setContentIntent(pending)
             .addAction(
                 Notification.Action.Builder(
                     R.drawable.ic_stat_monitor,
                     getString(R.string.action_add_to_coach),
-                    coachPending
+                    addPending
                 ).build()
             )
             .addAction(

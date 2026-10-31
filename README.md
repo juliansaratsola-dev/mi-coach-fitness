@@ -10,7 +10,7 @@ App Android (Kotlin) que detecta capturas de Garmin Connect y permite acumularla
 2. Un `ForegroundService` registra un `ContentObserver` sobre `MediaStore.Images`.
 3. Una imagen nueva cuenta como screenshot si el nombre o la ruta contiene `Screenshots`, `screenshot` o `captura`.
 4. Con acceso de uso, se comprueba que `com.garmin.android.apps.connectmobile` estuvo en primer plano en una ventana de 10 segundos alrededor de la captura (`DATE_TAKEN`, o `DATE_ADDED` si no hay fecha de toma).
-5. Si coincide, aparece una notificación para agregar la captura al Coach o compartirla con Copilot. Puedes acumular las capturas de estadísticas del mismo entrenamiento.
+5. Si coincide, aparece una notificación con **Agregar Coach** (suma la captura sin abrir la app; repítelo con cada captura del entrenamiento) y **Analizar entreno** (abre el Coach y genera el review de inmediato).
 6. El Coach envía las capturas elegidas, tus notas de sensaciones y hasta 8 sesiones anteriores a la API de Gemini. El historial se guarda en el almacenamiento privado de la app en el dispositivo; Gemini recibe esos datos al generar cada análisis.
 
 ## Coach con Gemini
@@ -71,7 +71,7 @@ Sin acceso de uso el filtro Garmin no puede ejecutarse. En ese caso el MVP sigue
 6. Abre Garmin Connect (`com.garmin.android.apps.connectmobile`) y toma una captura. El archivo suele llamarse `Screenshot_….png` o `Captura de pantalla….png` y vivir en `Pictures/Screenshots`.
 7. En unos segundos debe llegar la notificación **Captura de Garmin detectada**. Pulsa **Agregar al Coach** para acumular cada captura; repite con las estadísticas que quieras incluir.
 8. Abre **Mi Coach Fitness**, guarda tu API key de Gemini y entra en **Coach**. Añade cómo te sentiste (opcional) y genera el review.
-9. Comprueba las notas, sugerencias y comparativa; la sesión se conserva en el historial local para próximos reviews. **Analizar con Copilot** sigue disponible como alternativa.
+9. Comprueba las notas, sugerencias y comparativa; la sesión se conserva en el historial local para próximos reviews.
 10. Desactiva el switch, o pulsa **Detener** en la notificación permanente, y comprueba que el observer se va.
 
 Prueba del fallback: deja el monitoreo activo sin conceder acceso de uso, toma un screenshot de cualquier app y confirma que igual aparece la notificación. Con el acceso de uso concedido, un screenshot tomado fuera de la ventana de 10 s de Garmin no debe notificar.
