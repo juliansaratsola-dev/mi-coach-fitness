@@ -180,13 +180,30 @@ class ScreenshotMonitorService : Service() {
             analyze,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+        val coach = Intent(this, CoachActivity::class.java).apply {
+            data = image.uri
+            addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        val coachPending = PendingIntent.getActivity(
+            this,
+            requestCode,
+            coach,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
         val notification = Notification.Builder(this, CHANNEL_ALERTS)
             .setSmallIcon(R.drawable.ic_stat_monitor)
             .setContentTitle(getString(R.string.alert_title))
             .setContentText(getString(R.string.alert_text))
             .setStyle(Notification.BigTextStyle().bigText(getString(R.string.alert_text)))
             .setAutoCancel(true)
-            .setContentIntent(pending)
+            .setContentIntent(coachPending)
+            .addAction(
+                Notification.Action.Builder(
+                    R.drawable.ic_stat_monitor,
+                    getString(R.string.action_add_to_coach),
+                    coachPending
+                ).build()
+            )
             .addAction(
                 Notification.Action.Builder(
                     R.drawable.ic_stat_monitor,

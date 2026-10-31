@@ -11,6 +11,24 @@ class MonitorPreferences(context: Context) {
             prefs.edit().putBoolean(KEY_ENABLED, value).apply()
         }
 
+    var geminiApiKey: String
+        get() = prefs.getString(KEY_API, "").orEmpty()
+        set(value) {
+            prefs.edit().putString(KEY_API, value.trim()).apply()
+        }
+
+    fun pendingCaptures(): List<String> =
+        prefs.getString(KEY_PENDING, null)?.split('\n')?.filter { it.isNotBlank() } ?: emptyList()
+
+    fun addPendingCapture(uri: String) {
+        val updated = (pendingCaptures() + uri).distinct().takeLast(MAX_PENDING)
+        prefs.edit().putString(KEY_PENDING, updated.joinToString("\n")).apply()
+    }
+
+    fun clearPendingCaptures() {
+        prefs.edit().remove(KEY_PENDING).apply()
+    }
+
     fun isHandled(id: Long): Boolean = handledIds().contains(id)
 
     fun markHandled(id: Long) {
@@ -29,6 +47,9 @@ class MonitorPreferences(context: Context) {
         private const val PREFS = "monitor_prefs"
         private const val KEY_ENABLED = "enabled"
         private const val KEY_HANDLED = "handled_ids"
+        private const val KEY_API = "gemini_api_key"
+        private const val KEY_PENDING = "pending_captures"
         private const val MAX_HANDLED = 50
+        private const val MAX_PENDING = 6
     }
 }
