@@ -101,7 +101,7 @@ class HealthConnectReader(private val context: Context) {
     }
 
     companion object {
-        private const val LOOKBACK_MS = 24L * 60 * 60 * 1000
+        private const val LOOKBACK_MS = 7L * 24 * 60 * 60 * 1000
         private const val TIMEOUT_S = 20L
 
         val REQUIRED_PERMISSIONS = arrayOf(
