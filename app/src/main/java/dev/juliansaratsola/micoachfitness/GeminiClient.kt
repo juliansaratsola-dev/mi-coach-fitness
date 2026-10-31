@@ -40,7 +40,7 @@ class GeminiClient(private val context: Context, private val apiKey: String) {
                     .put("responseSchema", JSONObject(CoachPrompt.RESPONSE_SCHEMA))
                     .put("temperature", 0.6)
             )
-        val response = post(body.toString())
+        val response = request("$BASE/${resolveModel()}:generateContent", "POST", body.toString())
         val text = JSONObject(response)
             .optJSONArray("candidates")?.optJSONObject(0)
             ?.optJSONObject("content")?.optJSONArray("parts")?.optJSONObject(0)
@@ -53,16 +53,35 @@ class GeminiClient(private val context: Context, private val apiKey: String) {
         }
     }
 
-    private fun post(payload: String): String {
-        val connection = URL(ENDPOINT).openConnection() as HttpURLConnection
+    /** Asks the API which models this key can use, so the app does not depend on a retired model name. */
+    private fun resolveModel(): String {
+        val list = JSONObject(request("$BASE/models?pageSize=200", "GET", null)).optJSONArray("models")
+        val names = mutableListOf<String>()
+        if (list != null) {
+            for (i in 0 until list.length()) {
+                val model = list.optJSONObject(i) ?: continue
+                val methods = model.optJSONArray("supportedGenerationMethods") ?: continue
+                if ((0 until methods.length()).any { methods.optString(it) == "generateContent" }) {
+                    names += model.optString("name")
+                }
+            }
+        }
+        val picked = ModelPicker.pickFlash(names) ?: throw CoachException("No hay un modelo Gemini Flash disponible para esta clave.")
+        return "models/$picked"
+    }
+
+    private fun request(url: String, method: String, payload: String?): String {
+        val connection = URL(url).openConnection() as HttpURLConnection
         try {
-            connection.requestMethod = "POST"
+            connection.requestMethod = method
             connection.connectTimeout = 20_000
-            connection.readTimeout = 90_000
-            connection.doOutput = true
-            connection.setRequestProperty("Content-Type", "application/json")
+            connection.readTimeout = 120_000
             connection.setRequestProperty("x-goog-api-key", apiKey)
-            connection.outputStream.use { it.write(payload.toByteArray(Charsets.UTF_8)) }
+            if (payload != null) {
+                connection.doOutput = true
+                connection.setRequestProperty("Content-Type", "application/json")
+                connection.outputStream.use { it.write(payload.toByteArray(Charsets.UTF_8)) }
+            }
             val code = connection.responseCode
             if (code !in 200..299) {
                 val detail = connection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
@@ -93,8 +112,7 @@ class GeminiClient(private val context: Context, private val apiKey: String) {
     }
 
     companion object {
-        const val MODEL = "gemini-2.5-flash"
-        private const val ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/$MODEL:generateContent"
+        private const val BASE = "https://generativelanguage.googleapis.com/v1beta"
         private const val MAX_SIDE = 2000
     }
 }
