@@ -40,56 +40,5 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:textSize="15sp" />
-
-        <TextView
-            android:id="@+id/permissionSummary"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:textSize="15sp" />
-
-        <Button
-            android:id="@+id/grantPermissionsButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:text="@string/grant_permissions" />
-
-        <Button
-            android:id="@+id/usageSettingsButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/open_usage_settings" />
-
-        <EditText
-            android:id="@+id/apiKeyInput"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:hint="@string/gemini_key_hint"
-            android:importantForAutofill="no"
-            android:inputType="textPassword"
-            android:singleLine="true" />
-
-        <Button
-            android:id="@+id/saveKeyButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/save_key" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/coach_privacy_notice"
-            android:textSize="13sp" />
-
-        <Button
-            android:id="@+id/openCoachButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/open_coach" />
     </LinearLayout>
 </ScrollView>

@@ -11,6 +11,12 @@ class MonitorPreferences(context: Context) {
             prefs.edit().putBoolean(KEY_ENABLED, value).apply()
         }
 
+    var setupShown: Boolean
+        get() = prefs.getBoolean(KEY_SETUP, false)
+        set(value) {
+            prefs.edit().putBoolean(KEY_SETUP, value).apply()
+        }
+
     var geminiApiKey: String
         get() = prefs.getString(KEY_API, "").orEmpty()
         set(value) {
@@ -59,6 +65,7 @@ class MonitorPreferences(context: Context) {
         private const val PREFS = "monitor_prefs"
         private const val KEY_ENABLED = "enabled"
         private const val KEY_HANDLED = "handled_ids"
+        private const val KEY_SETUP = "setup_shown"
         private const val KEY_API = "gemini_api_key"
         private const val KEY_HC_END = "hc_last_session_end"
         private const val KEY_HC_WATCH = "hc_watch"

@@ -38,6 +38,12 @@
     <string name="hc_alert_title">¿Quieres analizar tu entrenamiento?</string>
     <string name="hc_alert_text">Garmin sincronizó: %1$s</string>
     <string name="hc_rationale">Mi Coach lee tus entrenamientos de Health Connect solo para generar el review.</string>
+    <string name="tab_home">Inicio</string>
+    <string name="tab_coach">Coach</string>
+    <string name="tab_wip">Próximamente</string>
+    <string name="tab_settings">Config</string>
+    <string name="wip_text">Próximamente</string>
+    <string name="setup_welcome">¡Bienvenido! Primero configura la app: concede los permisos, el acceso de uso y guarda tu API key de Gemini. Después vuelve a Inicio y activa el monitoreo.</string>
     <string name="coach_pending">Capturas listas para analizar: %1$d</string>
     <string name="coach_notes_hint">Sensaciones (opcional): tibias, gemelos, ánimo…</string>
     <string name="coach_generate">Generar review</string>
@@ -51,7 +57,6 @@
     <string name="coach_followup">❓ Para la próxima</string>
     <string name="coach_history">🗂 Historial</string>
     <string name="action_add_to_coach">Agregar Coach</string>
-    <string name="open_coach">Abrir Coach</string>
     <string name="gemini_key_hint">API key de Gemini</string>
     <string name="save_key">Guardar API key</string>
     <string name="key_saved">API key guardada.</string>

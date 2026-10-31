@@ -2,13 +2,9 @@ package dev.juliansaratsola.micoachfitness
 
 import android.app.Activity
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
-import android.provider.Settings
 import android.util.Log
-import android.widget.Button
 import android.widget.CompoundButton
-import android.widget.EditText
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
@@ -16,7 +12,6 @@ import android.widget.Toast
 class MainActivity : Activity() {
     private lateinit var monitorSwitch: Switch
     private lateinit var statusText: TextView
-    private lateinit var permissionSummary: TextView
     private lateinit var prefs: MonitorPreferences
     private var pendingEnable = false
 
@@ -31,25 +26,15 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
         prefs = MonitorPreferences(this)
+        BottomNav.attach(this, layoutInflater.inflate(R.layout.activity_main, null), BottomNav.Tab.HOME)
         monitorSwitch = findViewById(R.id.monitorSwitch)
         statusText = findViewById(R.id.statusText)
-        permissionSummary = findViewById(R.id.permissionSummary)
-        findViewById<Button>(R.id.grantPermissionsButton).setOnClickListener {
-            requestMissingPermissions(enableAfter = false)
-        }
-        findViewById<Button>(R.id.usageSettingsButton).setOnClickListener { openUsageSettings() }
-        val keyInput = findViewById<EditText>(R.id.apiKeyInput)
-        keyInput.setText(prefs.geminiApiKey)
-        findViewById<Button>(R.id.saveKeyButton).setOnClickListener {
-            prefs.geminiApiKey = keyInput.text.toString()
-            Toast.makeText(this, R.string.key_saved, Toast.LENGTH_SHORT).show()
-        }
-        findViewById<Button>(R.id.openCoachButton).setOnClickListener {
-            startActivity(Intent(this, CoachActivity::class.java))
-        }
         refreshUi()
+        if (savedInstanceState == null && !prefs.setupShown) {
+            prefs.setupShown = true
+            startActivity(Intent(this, SettingsActivity::class.java).putExtra(SettingsActivity.EXTRA_FIRST_RUN, true))
+        }
     }
 
     override fun onResume() {
@@ -98,17 +83,6 @@ class MainActivity : Activity() {
         refreshUi()
     }
 
-    private fun requestMissingPermissions(enableAfter: Boolean) {
-        val missing = PermissionHelper.missingRuntimePermissions(this)
-        if (missing.isEmpty()) {
-            Toast.makeText(this, R.string.permissions_ok, Toast.LENGTH_SHORT).show()
-            refreshUi()
-            return
-        }
-        pendingEnable = enableAfter
-        requestPermissions(missing, REQUEST_PERMISSIONS)
-    }
-
     private fun startMonitorService() {
         try {
             startForegroundService(Intent(this, ScreenshotMonitorService::class.java))
@@ -116,23 +90,6 @@ class MainActivity : Activity() {
             Log.e(TAG, "Unable to start monitor", error)
             prefs.isEnabled = false
             Toast.makeText(this, R.string.service_start_failed, Toast.LENGTH_LONG).show()
-        }
-    }
-
-    private fun openUsageSettings() {
-        val withPackage = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
-            data = Uri.parse("package:$packageName")
-        }
-        try {
-            startActivity(withPackage)
-        } catch (error: Exception) {
-            Log.w(TAG, "Usage settings with package URI failed", error)
-            try {
-                startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
-            } catch (fallback: Exception) {
-                Log.w(TAG, "Usage settings unavailable", fallback)
-                Toast.makeText(this, R.string.usage_settings_unavailable, Toast.LENGTH_LONG).show()
-            }
         }
     }
 
@@ -151,16 +108,6 @@ class MainActivity : Activity() {
             getString(R.string.fallback_usage_missing)
         }
         statusText.text = getString(R.string.status_line, service, filter)
-        permissionSummary.text = getString(
-            R.string.permission_summary,
-            stateLabel(PermissionHelper.hasNotificationAccess(this)),
-            stateLabel(PermissionHelper.hasPhotoAccess(this)),
-            stateLabel(GarminUsageChecker.hasUsageAccess(this))
-        )
-    }
-
-    private fun stateLabel(granted: Boolean): String {
-        return getString(if (granted) R.string.state_granted else R.string.state_missing)
     }
 
     companion object {
