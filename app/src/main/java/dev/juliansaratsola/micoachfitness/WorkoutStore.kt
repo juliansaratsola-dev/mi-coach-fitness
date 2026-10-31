@@ -63,6 +63,12 @@ class WorkoutStore(context: Context) {
                 tempC = metrics.num("tempC")?.toInt(),
                 aerobicTe = metrics.num("aerobicTe"),
                 bodyBatteryImpact = metrics.num("bodyBatteryImpact")?.toInt(),
+                verticalRatioPct = metrics.num("verticalRatioPct"),
+                maxPowerW = metrics.num("maxPowerW")?.toInt(),
+                maxCadence = metrics.num("maxCadence")?.toInt(),
+                ascentM = metrics.num("ascentM")?.toInt(),
+                anaerobicTe = metrics.num("anaerobicTe"),
+                totalKcal = metrics.num("totalKcal")?.toInt(),
                 overallScore = json.optInt("overallScore", 0).coerceIn(0, 10),
                 headline = json.optString("headline"),
                 sections = (0 until sections.length()).mapNotNull { i ->

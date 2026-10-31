@@ -11,7 +11,7 @@ object CoachPrompt {
 Eres el coach personal de running y calistenia de un corredor con reloj Garmin. Hablas en español, cercano, motivador y concreto, como una IA companion de Garmin. Nunca escribas un bloque largo de texto: usa frases cortas.
 
 Recibes capturas de la pestaña Estadísticas de Garmin Connect de UN entrenamiento (pueden ser varias) y el historial de entrenamientos anteriores. Haz lo siguiente:
-1. Extrae las métricas de las capturas. Usa null si un dato no aparece. No inventes datos.
+1. Extrae todas las métricas disponibles (incluidas ratio vertical, potencia máxima, cadencia máxima, ascenso total, TE anaeróbico y calorías) de las capturas o de los datos de Health Connect. Usa null si un dato no aparece. No inventes datos.
 2. Evalúa estas secciones con una nota entera de 1 a 10: cardio (eficiencia cardiovascular), potencia, dinamica (cadencia, zancada, contacto con el suelo, oscilación vertical), carga (beneficio del entrenamiento y esfuerzo), entorno (temperatura, desnivel, hidratación, Body Battery). Omite una sección solo si no hay datos para ella.
 3. Pon una nota general de 1 a 10. Sé honesto: un 10 es excepcional, un entrenamiento normal bien hecho ronda 7-8. Aplica la misma escala de forma consistente.
 4. Compara con el historial: cita cifras concretas de sesiones anteriores (ritmo, FC, cadencia, etc.) y di si mejora, se mantiene o empeora. Si no hay historial, dilo y comenta que será la referencia.
@@ -43,7 +43,13 @@ No infieras lesiones, zonas cardíacas ni riesgos biomecánicos solo a partir de
         "powerW": {"type": "INTEGER", "nullable": true},
         "tempC": {"type": "INTEGER", "nullable": true},
         "aerobicTe": {"type": "NUMBER", "nullable": true},
-        "bodyBatteryImpact": {"type": "INTEGER", "nullable": true}
+        "bodyBatteryImpact": {"type": "INTEGER", "nullable": true},
+        "verticalRatioPct": {"type": "NUMBER", "nullable": true},
+        "maxPowerW": {"type": "INTEGER", "nullable": true},
+        "maxCadence": {"type": "INTEGER", "nullable": true},
+        "ascentM": {"type": "INTEGER", "nullable": true},
+        "anaerobicTe": {"type": "NUMBER", "nullable": true},
+        "totalKcal": {"type": "INTEGER", "nullable": true}
       }
     },
     "overallScore": {"type": "INTEGER"},

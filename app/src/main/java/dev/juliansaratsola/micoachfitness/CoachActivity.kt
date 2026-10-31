@@ -256,7 +256,7 @@ class CoachActivity : Activity() {
         val c = reviewContainer
         c.addView(text("${record.date} · ${record.type}", 14f, color = Color.GRAY))
         c.addView(text("${record.overallScore}/10  ${record.headline}", 22f, bold = true, color = scoreColor(record.overallScore)))
-        c.addView(text(metricsLine(record), 14f).apply { setPadding(0, 8, 0, 8) })
+        renderMetrics(record)
         for (section in record.sections) {
             c.addView(text("${section.title}  ${section.score}/10", 17f, bold = true, color = scoreColor(section.score)).apply {
                 setPadding(0, 20, 0, 4)
@@ -290,14 +290,19 @@ class CoachActivity : Activity() {
         }
     }
 
-    private fun metricsLine(r: WorkoutRecord): String {
-        val parts = mutableListOf<String>()
-        r.distanceKm?.let { parts += "%.2f km".format(Locale.US, it) }
-        r.paceSecPerKm?.let { parts += "${r.paceText()}/km" }
-        r.avgHr?.let { parts += "$it ppm" }
-        r.cadence?.let { parts += "$it spm" }
-        r.powerW?.let { parts += "$it W" }
-        return parts.joinToString("  ·  ")
+    private fun renderMetrics(record: WorkoutRecord) {
+        val density = resources.displayMetrics.density
+        for ((title, items) in record.metricGroups()) {
+            reviewContainer.addView(text(title, 13f, bold = true, color = getColor(R.color.seed)).apply {
+                setPadding(0, (12 * density).toInt(), 0, (2 * density).toInt())
+            })
+            for ((label, value) in items) {
+                val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+                row.addView(text(label, 15f, color = Color.GRAY), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+                row.addView(text(value, 15f, bold = true))
+                reviewContainer.addView(row)
+            }
+        }
     }
 
     private fun scoreColor(score: Int): Int = when {
