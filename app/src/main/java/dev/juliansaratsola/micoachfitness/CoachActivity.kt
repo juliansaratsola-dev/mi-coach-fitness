@@ -176,9 +176,11 @@ class CoachActivity : Activity() {
                 if (fromHealth) {
                     val session = HealthConnectReader(applicationContext).latestSession()
                         ?: throw CoachException(getString(R.string.hc_none))
+                    val sessionDate = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(session.startMillis))
                     val raw = GeminiClient(applicationContext, key)
-                        .review(emptyList(), store.all(), today, notes, session.toPromptText())
-                    store.add(raw, today)
+                        .review(emptyList(), store.all(), today, notes, "Fecha del entrenamiento: $sessionDate\n" + session.toPromptText())
+                    raw.put("date", sessionDate)
+                    store.add(raw, sessionDate)
                     prefs.lastHealthSessionEnd = session.endMillis
                 } else {
                     val raw = GeminiClient(applicationContext, key).review(uris, store.all(), today, notes)
