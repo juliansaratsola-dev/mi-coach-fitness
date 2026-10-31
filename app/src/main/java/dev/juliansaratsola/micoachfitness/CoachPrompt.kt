@@ -69,11 +69,21 @@ No infieras lesiones, zonas cardíacas ni riesgos biomecánicos solo a partir de
 }
 """
 
-    fun userPrompt(history: List<WorkoutRecord>, todayIso: String, notes: String? = null): String {
+    fun userPrompt(
+        history: List<WorkoutRecord>,
+        todayIso: String,
+        notes: String? = null,
+        workoutData: String? = null
+    ): String {
         val recent = history.takeLast(HISTORY_LIMIT)
         val sb = StringBuilder()
         sb.append("Fecha de hoy: ").append(todayIso).append(".\n")
-        sb.append("¿Qué opinas de mi entrenamiento? Las imágenes adjuntas son las estadísticas de Garmin Connect.\n\n")
+        if (workoutData.isNullOrBlank()) {
+            sb.append("¿Qué opinas de mi entrenamiento? Las imágenes adjuntas son las estadísticas de Garmin Connect.\n\n")
+        } else {
+            sb.append("¿Qué opinas de mi entrenamiento? No hay capturas: estos son los datos que mi Garmin sincronizó con Health Connect.\n")
+            sb.append(workoutData.trim()).append("\n\n")
+        }
         if (recent.isEmpty()) {
             sb.append("HISTORIAL: sin entrenamientos previos registrados.\n")
         } else {

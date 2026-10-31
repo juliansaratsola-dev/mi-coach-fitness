@@ -69,9 +69,13 @@ Sin acceso de uso el filtro Garmin no puede ejecutarse. En ese caso el MVP sigue
 4. Pulsa **Abrir acceso de uso** y activa Mi Coach Fitness.
 5. Activa el switch **Monitoreo activo**. Debe quedar una notificación permanente de monitoreo.
 6. Abre Garmin Connect (`com.garmin.android.apps.connectmobile`) y toma una captura. El archivo suele llamarse `Screenshot_….png` o `Captura de pantalla….png` y vivir en `Pictures/Screenshots`.
-7. En unos segundos debe llegar la notificación **Captura de Garmin detectada**. Pulsa **Agregar al Coach** para acumular cada captura; repite con las estadísticas que quieras incluir.
+7. En unos segundos debe llegar la notificación **Captura de Garmin detectada**. Pulsa **Agregar Coach** para acumular cada captura; repite con las estadísticas que quieras incluir.
 8. Abre **Mi Coach Fitness**, guarda tu API key de Gemini y entra en **Coach**. Añade cómo te sentiste (opcional) y genera el review.
 9. Comprueba las notas, sugerencias y comparativa; la sesión se conserva en el historial local para próximos reviews.
+### Review sin capturas (Health Connect)
+
+Requiere Android 14 o superior. En Garmin Connect activa la integración con Health Connect (Más > Ajustes > Aplicaciones conectadas) para que escriba tus entrenamientos allí. En el Coach pulsa **Usar Health Connect (sin capturas)**, concede los permisos y se analiza el último entrenamiento (distancia, FC, potencia, ascenso, cadencia si están disponibles). Con el monitoreo activo, la app revisa Health Connect cada 3 minutos y, cuando termina un entrenamiento nuevo, muestra **¿Quieres analizar tu entrenamiento?**. Las métricas que Health Connect no recibe (zancada, contacto con el suelo, oscilación vertical, TE, Body Battery) quedan vacías; el método de capturas sigue disponible para eso.
+
 10. Desactiva el switch, o pulsa **Detener** en la notificación permanente, y comprueba que el observer se va.
 
 Prueba del fallback: deja el monitoreo activo sin conceder acceso de uso, toma un screenshot de cualquier app y confirma que igual aparece la notificación. Con el acceso de uso concedido, un screenshot tomado fuera de la ventana de 10 s de Garmin no debe notificar.

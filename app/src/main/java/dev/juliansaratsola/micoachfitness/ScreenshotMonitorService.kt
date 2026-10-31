@@ -49,6 +49,7 @@ class ScreenshotMonitorService : Service() {
         }
         running = true
         registerObserver()
+        startHealthPolling()
         return START_STICKY
     }
 
@@ -163,6 +164,76 @@ class ScreenshotMonitorService : Service() {
             if (!waitingForRetry) {
                 synchronized(inFlight) { inFlight.remove(image.id) }
             }
+        }
+    }
+
+    private var healthPolling = false
+
+    /** Health Connect has no push events, so look for newly finished workouts every few minutes. */
+    private fun startHealthPolling() {
+        if (healthPolling || !HealthConnectReader.supported()) return
+        healthPolling = true
+        handler.postDelayed(object : Runnable {
+            override fun run() {
+                if (destroyed) return
+                try {
+                    worker.execute { pollHealth() }
+                } catch (rejected: java.util.concurrent.RejectedExecutionException) {
+                    return
+                }
+                handler.postDelayed(this, HEALTH_POLL_MS)
+            }
+        }, HEALTH_POLL_MS)
+    }
+
+    private fun pollHealth() {
+        val prefs = MonitorPreferences(this)
+        if (!prefs.healthWatchEnabled) return
+        val reader = HealthConnectReader(this)
+        if (!reader.hasPermissions()) return
+        if (prefs.lastHealthSessionEnd == 0L) {
+            prefs.lastHealthSessionEnd = System.currentTimeMillis()
+            return
+        }
+        val session = runCatching { reader.latestSession(prefs.lastHealthSessionEnd) }.getOrNull() ?: return
+        prefs.lastHealthSessionEnd = session.endMillis
+        handler.post { notifyHealthSession(session) }
+    }
+
+    private fun notifyHealthSession(session: HealthSession) {
+        if (destroyed || !PermissionHelper.hasNotificationAccess(this)) return
+        val open = Intent(this, CoachActivity::class.java).apply {
+            putExtra(CoachActivity.EXTRA_AUTO_GENERATE, true)
+            putExtra(CoachActivity.EXTRA_FROM_HEALTH, true)
+            addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        val pending = PendingIntent.getActivity(
+            this,
+            HEALTH_ALERT_ID,
+            open,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val text = getString(R.string.hc_alert_text, session.shortText())
+        val notification = Notification.Builder(this, CHANNEL_ALERTS)
+            .setSmallIcon(R.drawable.ic_stat_monitor)
+            .setContentTitle(getString(R.string.hc_alert_title))
+            .setContentText(text)
+            .setStyle(Notification.BigTextStyle().bigText(text))
+            .setAutoCancel(true)
+            .setContentIntent(pending)
+            .addAction(
+                Notification.Action.Builder(
+                    R.drawable.ic_stat_monitor,
+                    getString(R.string.action_analyze_copilot),
+                    pending
+                ).build()
+            )
+            .setCategory(Notification.CATEGORY_RECOMMENDATION)
+            .build()
+        try {
+            getSystemService(NotificationManager::class.java)?.notify(HEALTH_ALERT_ID, notification)
+        } catch (security: SecurityException) {
+            Log.w(TAG, "Unable to post health notification", security)
         }
     }
 
@@ -286,6 +357,8 @@ class ScreenshotMonitorService : Service() {
         private const val CHANNEL_MONITOR = "screenshot_monitor"
         private const val CHANNEL_ALERTS = "screenshot_alerts"
         private const val FG_NOTIFICATION_ID = 1001
+        private const val HEALTH_ALERT_ID = 2002
+        private const val HEALTH_POLL_MS = 3L * 60L * 1000L
         private const val SCAN_DELAY_MS = 500L
         private const val RETRY_DELAY_MS = 1_500L
         private const val MAX_AGE_MS = 3L * 60L * 1000L

@@ -17,6 +17,18 @@ class MonitorPreferences(context: Context) {
             prefs.edit().putString(KEY_API, value.trim()).apply()
         }
 
+    var lastHealthSessionEnd: Long
+        get() = prefs.getLong(KEY_HC_END, 0L)
+        set(value) {
+            prefs.edit().putLong(KEY_HC_END, value).apply()
+        }
+
+    var healthWatchEnabled: Boolean
+        get() = prefs.getBoolean(KEY_HC_WATCH, false)
+        set(value) {
+            prefs.edit().putBoolean(KEY_HC_WATCH, value).apply()
+        }
+
     fun pendingCaptures(): List<String> =
         prefs.getString(KEY_PENDING, null)?.split('\n')?.filter { it.isNotBlank() } ?: emptyList()
 
@@ -48,6 +60,8 @@ class MonitorPreferences(context: Context) {
         private const val KEY_ENABLED = "enabled"
         private const val KEY_HANDLED = "handled_ids"
         private const val KEY_API = "gemini_api_key"
+        private const val KEY_HC_END = "hc_last_session_end"
+        private const val KEY_HC_WATCH = "hc_watch"
         private const val KEY_PENDING = "pending_captures"
         private const val MAX_HANDLED = 50
         private const val MAX_PENDING = 6
