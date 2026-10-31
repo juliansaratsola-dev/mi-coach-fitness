@@ -57,9 +57,17 @@
     <string name="coach_suggestions">💡 Sugerencias</string>
     <string name="coach_followup">❓ Para la próxima</string>
     <string name="coach_history">🗂 Historial</string>
+    <string name="coach_chat_title">Chat con tu coach</string>
+    <string name="coach_chat_hint">Escribe un mensaje…</string>
+    <string name="coach_chat_send">Enviar</string>
+    <string name="coach_chat_sending">Enviando…</string>
+    <string name="coach_chat_history_error">No se pudo leer la conversación guardada.</string>
+    <string name="coach_chat_error">No se pudo enviar el mensaje: %1$s</string>
+    <string name="coach_chat_user_message">Tu mensaje: %1$s</string>
+    <string name="coach_chat_reply_message">Respuesta del coach: %1$s</string>
     <string name="action_add_to_coach">Agregar Coach</string>
     <string name="gemini_key_hint">API key de Gemini</string>
     <string name="save_key">Guardar API key</string>
     <string name="key_saved">API key guardada.</string>
-    <string name="coach_privacy_notice">Para generar un review, se envían a Google Gemini las capturas seleccionadas, tus sensaciones y hasta 8 entrenamientos guardados. El historial y la API key se guardan en este dispositivo.</string>
+    <string name="coach_privacy_notice">Para generar un review, se envían a Google Gemini las capturas elegidas, tus sensaciones y hasta 8 entrenamientos guardados. En el chat se envían tus mensajes recientes y ese mismo contexto. El historial, la conversación y la API key se guardan en este dispositivo.</string>
 </resources>

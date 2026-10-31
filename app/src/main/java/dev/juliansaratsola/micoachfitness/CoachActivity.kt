@@ -4,9 +4,12 @@ import android.app.Activity
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
+import android.view.Gravity
 import android.view.View
+import android.text.InputType
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -21,16 +24,23 @@ import java.util.Locale
 
 /**
  * Coach screen: collects the Garmin screenshots of one workout, asks Gemini for a review
- * that compares against the stored history, and shows scored sections and suggestions.
+ * that compares against stored history, and provides a contextual follow-up chat.
  */
 class CoachActivity : Activity() {
     private lateinit var prefs: MonitorPreferences
     private lateinit var store: WorkoutStore
+    private lateinit var chatStore: CoachChatStore
     private lateinit var pendingText: TextView
     private lateinit var notesInput: EditText
     private lateinit var generateButton: Button
     private lateinit var reviewContainer: LinearLayout
+    private lateinit var chatMessagesContainer: LinearLayout
+    private lateinit var chatInput: EditText
+    private lateinit var chatSendButton: Button
+    private lateinit var pageScroll: ScrollView
+    private var conversation = emptyList<CoachChatMessage>()
     private var busy = false
+    private var chatBusy = false
     private var autoGenerate = false
     private var autoHealth = false
     private lateinit var healthButton: Button
@@ -39,6 +49,12 @@ class CoachActivity : Activity() {
         super.onCreate(savedInstanceState)
         prefs = MonitorPreferences(this)
         store = WorkoutStore(this)
+        chatStore = CoachChatStore(this)
+        try {
+            conversation = chatStore.all()
+        } catch (error: JSONException) {
+            Toast.makeText(this, R.string.coach_chat_history_error, Toast.LENGTH_LONG).show()
+        }
         buildUi()
         if (savedInstanceState == null) handleIntent(intent)
         refresh()
@@ -109,7 +125,32 @@ class CoachActivity : Activity() {
             setPadding(0, dp(16), 0, 0)
         }
         root.addView(reviewContainer)
-        BottomNav.attach(this, ScrollView(this).apply { addView(root) }, BottomNav.Tab.COACH)
+        root.addView(text(getString(R.string.coach_chat_title), 22f, bold = true, color = getColor(R.color.seed)).apply {
+            setPadding(0, dp(32), 0, dp(8))
+        })
+        chatMessagesContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        root.addView(chatMessagesContainer)
+        val composer = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        chatInput = EditText(this).apply {
+            hint = getString(R.string.coach_chat_hint)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            minLines = 1
+            maxLines = 5
+        }
+        composer.addView(chatInput, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        chatSendButton = Button(this).apply {
+            text = getString(R.string.coach_chat_send)
+            setOnClickListener { sendChatMessage() }
+        }
+        composer.addView(chatSendButton)
+        root.addView(composer)
+        pageScroll = ScrollView(this).apply { addView(root) }
+        BottomNav.attach(this, pageScroll, BottomNav.Tab.COACH)
     }
 
     private fun refresh() {
@@ -131,6 +172,8 @@ class CoachActivity : Activity() {
                 Toast.makeText(this, R.string.coach_history_error, Toast.LENGTH_LONG).show()
             }
         }
+        renderChatMessages()
+        updateChatControls()
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -150,7 +193,7 @@ class CoachActivity : Activity() {
 
     /** Lists recent Health Connect workouts so the user picks the right one instead of guessing. */
     private fun chooseHealthSession() {
-        if (busy) return
+        if (busy || chatBusy) return
         if (!HealthConnectReader.supported()) {
             Toast.makeText(this, R.string.hc_unsupported, Toast.LENGTH_LONG).show()
             return
@@ -210,10 +253,11 @@ class CoachActivity : Activity() {
             }
         }
         val uris = prefs.pendingCaptures().map { Uri.parse(it) }
-        if ((!fromHealth && uris.isEmpty()) || busy) return
+        if ((!fromHealth && uris.isEmpty()) || busy || chatBusy) return
         busy = true
         generateButton.isEnabled = false
         healthButton.isEnabled = false
+        updateChatControls()
         generateButton.text = getString(R.string.coach_generating)
         val notes = notesInput.text.toString()
         val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
@@ -250,6 +294,75 @@ class CoachActivity : Activity() {
                 if (!isDestroyed) refresh()
             }
         }.start()
+    }
+
+    private fun sendChatMessage() {
+        val message = chatInput.text.toString().trim()
+        if (message.isBlank() || busy || chatBusy) return
+        val key = prefs.geminiApiKey
+        if (key.isBlank()) {
+            Toast.makeText(this, R.string.coach_missing_key, Toast.LENGTH_LONG).show()
+            return
+        }
+        val pendingConversation = conversation + CoachChatMessage(CoachChatRole.USER, message)
+        chatBusy = true
+        updateChatControls()
+        Thread {
+            val outcome = runCatching {
+                GeminiClient(applicationContext, key).chat(store.all(), pendingConversation)
+            }
+            runOnUiThread {
+                chatBusy = false
+                if (isDestroyed) return@runOnUiThread
+                outcome.onSuccess { answer ->
+                    conversation = (pendingConversation + CoachChatMessage(CoachChatRole.COACH, answer)).takeLast(40)
+                    chatStore.save(conversation)
+                    chatInput.setText("")
+                    renderChatMessages()
+                    pageScroll.post { pageScroll.fullScroll(View.FOCUS_DOWN) }
+                }.onFailure {
+                    Toast.makeText(
+                        this,
+                        getString(R.string.coach_chat_error, it.message ?: it.javaClass.simpleName),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+                updateChatControls()
+            }
+        }.start()
+    }
+
+    private fun renderChatMessages() {
+        chatMessagesContainer.removeAllViews()
+        val density = resources.displayMetrics.density
+        conversation.forEach { message ->
+            val row = LinearLayout(this).apply {
+                gravity = if (message.role == CoachChatRole.USER) Gravity.END else Gravity.START
+                setPadding(0, (4 * density).toInt(), 0, (4 * density).toInt())
+            }
+            val bubble = text(message.text, 15f).apply {
+                val color = if (message.role == CoachChatRole.USER) Color.rgb(232, 240, 254) else Color.rgb(242, 242, 242)
+                background = GradientDrawable().apply {
+                    setColor(color)
+                    cornerRadius = 16 * density
+                }
+                setPadding((12 * density).toInt(), (10 * density).toInt(), (12 * density).toInt(), (10 * density).toInt())
+                contentDescription = if (message.role == CoachChatRole.USER) {
+                    getString(R.string.coach_chat_user_message, message.text)
+                } else {
+                    getString(R.string.coach_chat_reply_message, message.text)
+                }
+            }
+            row.addView(bubble, LinearLayout.LayoutParams((resources.displayMetrics.widthPixels * 0.78f).toInt(), LinearLayout.LayoutParams.WRAP_CONTENT))
+            chatMessagesContainer.addView(row)
+        }
+    }
+
+    private fun updateChatControls() {
+        if (!::chatSendButton.isInitialized || !::chatInput.isInitialized) return
+        chatSendButton.isEnabled = !busy && !chatBusy
+        chatInput.isEnabled = !busy && !chatBusy
+        chatSendButton.text = getString(if (chatBusy) R.string.coach_chat_sending else R.string.coach_chat_send)
     }
 
     private fun renderRecord(record: WorkoutRecord, previousCount: Int) {

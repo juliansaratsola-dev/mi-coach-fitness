@@ -21,6 +21,42 @@ Cada review de sección: máximo 2 frases. Usa algún emoji por sección.
 No infieras lesiones, zonas cardíacas ni riesgos biomecánicos solo a partir de estas métricas; no impongas umbrales universales (por ejemplo, una cadencia mínima). Distingue los datos observados de las hipótesis y no hagas afirmaciones médicas.
 """.trimIndent()
 
+    fun chatSystemInstruction(history: List<WorkoutRecord>): String {
+        val recent = history.takeLast(HISTORY_LIMIT)
+        val sb = StringBuilder(
+            """
+Eres el coach personal de running y calistenia del usuario. Mantén una conversación natural, en español, cercana y concreta. Ayúdale a interpretar su entrenamiento y a relacionar sus sensaciones con la review y su historial; no repitas una review completa salvo que te la pida. Responde directamente al mensaje y haz preguntas solo cuando falte información importante.
+
+Usa únicamente los datos incluidos abajo y los que el usuario comparta en este chat. No inventes métricas, edad, peso, objetivos ni comparativas. Si pregunta cómo se compara con corredores amateurs de su edad o peso y esos datos o una referencia fiable no están disponibles, explícalo con claridad en vez de estimarlo. No infieras lesiones ni des diagnósticos médicos.
+
+CONTEXTO DE ENTRENAMIENTO:
+""".trimIndent()
+        )
+        if (recent.isEmpty()) {
+            sb.append("\nTodavía no hay entrenamientos guardados ni una review disponible.\n")
+        } else {
+            sb.append("\nHistorial reciente (del más antiguo al más reciente):\n")
+            recent.forEach { sb.append("- ").append(it.toHistoryLine()).append('\n') }
+            trendSummary(recent)?.let { sb.append(it).append('\n') }
+            val latest = recent.last()
+            sb.append("\nReview más reciente (${latest.date}): ${latest.overallScore}/10 — ${latest.headline}\n")
+            latest.metricGroups().forEach { (title, items) ->
+                sb.append("$title: ").append(items.joinToString(", ") { "${it.first}: ${it.second}" }).append('\n')
+            }
+            latest.sections.forEach {
+                sb.append("- ${it.title} ${it.score}/10: ${it.review}\n")
+            }
+            if (latest.comparison.isNotBlank()) sb.append("Comparativa de la review: ${latest.comparison}\n")
+            if (latest.suggestions.isNotEmpty()) {
+                sb.append("Sugerencias de la review: ${latest.suggestions.joinToString("; ")}\n")
+            }
+            if (latest.followUpQuestions.isNotEmpty()) {
+                sb.append("Preguntas de seguimiento: ${latest.followUpQuestions.joinToString("; ")}\n")
+            }
+        }
+        return sb.toString()
+    }
+
     /** JSON schema (Gemini response schema subset) the model must follow. */
     const val RESPONSE_SCHEMA = """
 {

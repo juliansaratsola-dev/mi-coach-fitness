@@ -13,8 +13,40 @@ import java.net.URL
 
 class CoachException(message: String, val retryable: Boolean = false, val modelUnavailable: Boolean = false) : Exception(message)
 
-/** Minimal Gemini REST client: sends screenshots + history prompt and returns the structured JSON review. */
+/** Gemini REST client for structured workout reviews and contextual chat. */
 class GeminiClient(private val context: Context, private val apiKey: String) {
+
+    fun chat(history: List<WorkoutRecord>, conversation: List<CoachChatMessage>): String {
+        val contents = JSONArray()
+        conversation.takeLast(MAX_CHAT_MESSAGES).forEach { message ->
+            contents.put(
+                JSONObject()
+                    .put("role", message.role.apiRole)
+                    .put("parts", JSONArray().put(JSONObject().put("text", message.text)))
+            )
+        }
+        val body = JSONObject()
+            .put(
+                "systemInstruction",
+                JSONObject().put(
+                    "parts",
+                    JSONArray().put(JSONObject().put("text", CoachPrompt.chatSystemInstruction(history)))
+                )
+            )
+            .put("contents", contents)
+            .put("generationConfig", JSONObject().put("temperature", 0.7))
+        val response = generateWithFallback(body.toString())
+        val parts = JSONObject(response)
+            .optJSONArray("candidates")?.optJSONObject(0)
+            ?.optJSONObject("content")?.optJSONArray("parts")
+            ?: throw CoachException("Gemini no devolvió contenido.")
+        val answer = (0 until parts.length())
+            .mapNotNull { parts.optJSONObject(it)?.optString("text") }
+            .joinToString("\n")
+            .trim()
+        if (answer.isBlank()) throw CoachException("Gemini no devolvió contenido.")
+        return answer
+    }
 
     fun review(
         images: List<Uri>,
@@ -139,6 +171,7 @@ class GeminiClient(private val context: Context, private val apiKey: String) {
     companion object {
         private const val ATTEMPTS_PER_MODEL = 2
         private const val MAX_MODELS = 3
+        private const val MAX_CHAT_MESSAGES = 24
         private const val BASE = "https://generativelanguage.googleapis.com/v1beta"
         private const val MAX_SIDE = 2000
     }
