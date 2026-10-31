@@ -31,9 +31,13 @@ class HealthConnectReader(private val context: Context) {
         context.checkSelfPermission(it) == android.content.pm.PackageManager.PERMISSION_GRANTED
     }
 
-    /** Most recent exercise session that ended after [afterMillis], or null. */
-    fun latestSession(afterMillis: Long = 0L): HealthSession? {
-        val hc = manager ?: return null
+    /** Best candidate among recent sessions: the latest real workout, not a tiny auto-detected one. */
+    fun latestSession(afterMillis: Long = 0L): HealthSession? =
+        HealthSession.pickBest(recentSessions(afterMillis, 6))
+
+    /** Recent exercise sessions that ended after [afterMillis], newest first, with their metrics. */
+    fun recentSessions(afterMillis: Long = 0L, limit: Int = 6): List<HealthSession> {
+        val hc = manager ?: return emptyList()
         val filter = TimeInstantRangeFilter.Builder()
             .setStartTime(Instant.ofEpochMilli(maxOf(afterMillis, System.currentTimeMillis() - LOOKBACK_MS)))
             .setEndTime(Instant.now().plusSeconds(60))
@@ -44,10 +48,12 @@ class HealthConnectReader(private val context: Context) {
             .build()
         val response = await<ReadRecordsResponse<ExerciseSessionRecord>> { receiver ->
             hc.readRecords(request, executor, receiver)
-        } ?: return null
-        val session = response.records.maxByOrNull { it.endTime } ?: return null
-        if (session.endTime.toEpochMilli() <= afterMillis) return null
-        return details(session)
+        } ?: return emptyList()
+        return response.records
+            .filter { it.endTime.toEpochMilli() > afterMillis }
+            .sortedByDescending { it.endTime }
+            .take(limit)
+            .map { details(it) }
     }
 
     private fun details(session: ExerciseSessionRecord): HealthSession {

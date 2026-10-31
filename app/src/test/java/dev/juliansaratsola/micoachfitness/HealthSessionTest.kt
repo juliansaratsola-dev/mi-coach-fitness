@@ -30,4 +30,16 @@ class HealthSessionTest {
         assertTrue(text.contains("potencia"))
         assertTrue(text.contains("no los inventes"))
     }
+
+    @Test
+    fun pickBestSkipsTinyLaterSession() {
+        val tiny = session.copy(startMillis = 3_000_000L, endMillis = 4_300_000L, exerciseType = 0, distanceM = 90.0)
+        assertEquals(session, HealthSession.pickBest(listOf(session, tiny)))
+    }
+
+    @Test
+    fun pickBestFallsBackToLatest() {
+        val tiny = session.copy(endMillis = 5_000_000L, distanceM = null)
+        assertEquals(tiny, HealthSession.pickBest(listOf(tiny)))
+    }
 }

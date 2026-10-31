@@ -94,7 +94,7 @@ class CoachActivity : Activity() {
         root.addView(generateButton)
         healthButton = Button(this).apply {
             text = getString(R.string.hc_button)
-            setOnClickListener { generate(fromHealth = true) }
+            setOnClickListener { chooseHealthSession() }
         }
         root.addView(healthButton)
         root.addView(Button(this).apply {
@@ -144,7 +144,38 @@ class CoachActivity : Activity() {
         }
     }
 
-    private fun generate(fromHealth: Boolean = false) {
+    /** Lists recent Health Connect workouts so the user picks the right one instead of guessing. */
+    private fun chooseHealthSession() {
+        if (busy) return
+        if (!HealthConnectReader.supported()) {
+            Toast.makeText(this, R.string.hc_unsupported, Toast.LENGTH_LONG).show()
+            return
+        }
+        if (!HealthConnectReader(this).hasPermissions()) {
+            generate(fromHealth = true)
+            return
+        }
+        healthButton.isEnabled = false
+        Thread {
+            val sessions = runCatching { HealthConnectReader(applicationContext).recentSessions() }.getOrDefault(emptyList())
+            runOnUiThread {
+                healthButton.isEnabled = !busy
+                if (isDestroyed) return@runOnUiThread
+                if (sessions.isEmpty()) {
+                    Toast.makeText(this, R.string.hc_none, Toast.LENGTH_LONG).show()
+                    return@runOnUiThread
+                }
+                val format = SimpleDateFormat("d MMM HH:mm", Locale.getDefault())
+                val labels = sessions.map { it.chooserLabel(format.format(Date(it.startMillis))) }.toTypedArray()
+                android.app.AlertDialog.Builder(this)
+                    .setTitle(R.string.hc_choose)
+                    .setItems(labels) { _, which -> generate(fromHealth = true, chosen = sessions[which]) }
+                    .show()
+            }
+        }.start()
+    }
+
+    private fun generate(fromHealth: Boolean = false, chosen: HealthSession? = null) {
         val key = prefs.geminiApiKey
         if (key.isBlank()) {
             Toast.makeText(this, R.string.coach_missing_key, Toast.LENGTH_LONG).show()
@@ -174,7 +205,7 @@ class CoachActivity : Activity() {
         Thread {
             val outcome = runCatching {
                 if (fromHealth) {
-                    val session = HealthConnectReader(applicationContext).latestSession()
+                    val session = chosen ?: HealthConnectReader(applicationContext).latestSession()
                         ?: throw CoachException(getString(R.string.hc_none))
                     val sessionDate = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(session.startMillis))
                     val raw = GeminiClient(applicationContext, key)
