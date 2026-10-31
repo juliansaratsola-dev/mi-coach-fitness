@@ -11,7 +11,7 @@ import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 
-class CoachException(message: String) : Exception(message)
+class CoachException(message: String, val retryable: Boolean = false) : Exception(message)
 
 /** Minimal Gemini REST client: sends screenshots + history prompt and returns the structured JSON review. */
 class GeminiClient(private val context: Context, private val apiKey: String) {
@@ -40,7 +40,7 @@ class GeminiClient(private val context: Context, private val apiKey: String) {
                     .put("responseSchema", JSONObject(CoachPrompt.RESPONSE_SCHEMA))
                     .put("temperature", 0.6)
             )
-        val response = request("$BASE/${resolveModel()}:generateContent", "POST", body.toString())
+        val response = generateWithFallback(body.toString())
         val text = JSONObject(response)
             .optJSONArray("candidates")?.optJSONObject(0)
             ?.optJSONObject("content")?.optJSONArray("parts")?.optJSONObject(0)
@@ -53,8 +53,25 @@ class GeminiClient(private val context: Context, private val apiKey: String) {
         }
     }
 
+    /** Retries transient overload errors, then falls back to the next available model. */
+    private fun generateWithFallback(payload: String): String {
+        var last: CoachException? = null
+        for (model in resolveModels().take(MAX_MODELS)) {
+            for (attempt in 0 until ATTEMPTS_PER_MODEL) {
+                try {
+                    return request("$BASE/$model:generateContent", "POST", payload)
+                } catch (error: CoachException) {
+                    if (!error.retryable) throw error
+                    last = error
+                    if (attempt < ATTEMPTS_PER_MODEL - 1) Thread.sleep(3_000L * (attempt + 1))
+                }
+            }
+        }
+        throw CoachException("Gemini está saturado. Intenta de nuevo en unos minutos. (${last?.message.orEmpty()})")
+    }
+
     /** Asks the API which models this key can use, so the app does not depend on a retired model name. */
-    private fun resolveModel(): String {
+    private fun resolveModels(): List<String> {
         val list = JSONObject(request("$BASE/models?pageSize=200", "GET", null)).optJSONArray("models")
         val names = mutableListOf<String>()
         if (list != null) {
@@ -66,8 +83,9 @@ class GeminiClient(private val context: Context, private val apiKey: String) {
                 }
             }
         }
-        val picked = ModelPicker.pickFlash(names) ?: throw CoachException("No hay un modelo Gemini Flash disponible para esta clave.")
-        return "models/$picked"
+        val ranked = ModelPicker.rankFlash(names)
+        if (ranked.isEmpty()) throw CoachException("No hay un modelo Gemini Flash disponible para esta clave.")
+        return ranked.map { "models/$it" }
     }
 
     private fun request(url: String, method: String, payload: String?): String {
@@ -88,7 +106,7 @@ class GeminiClient(private val context: Context, private val apiKey: String) {
                 val message = runCatching {
                     JSONObject(detail).getJSONObject("error").getString("message")
                 }.getOrDefault("")
-                throw CoachException("Gemini respondió $code. $message".trim())
+                throw CoachException("Gemini respondió $code. $message".trim(), retryable = code == 429 || code >= 500)
             }
             return connection.inputStream.bufferedReader().use { it.readText() }
         } finally {
@@ -112,6 +130,8 @@ class GeminiClient(private val context: Context, private val apiKey: String) {
     }
 
     companion object {
+        private const val ATTEMPTS_PER_MODEL = 2
+        private const val MAX_MODELS = 3
         private const val BASE = "https://generativelanguage.googleapis.com/v1beta"
         private const val MAX_SIDE = 2000
     }

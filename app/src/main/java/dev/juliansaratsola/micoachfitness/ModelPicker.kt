@@ -1,20 +1,30 @@
 package dev.juliansaratsola.micoachfitness
 
-/** Picks the newest stable Flash model from the names returned by the Gemini ListModels call. */
+/** Ranks Flash models from the names returned by the Gemini ListModels call. */
 object ModelPicker {
-    private val FLASH = Regex("^gemini-(\\d+)(?:\\.(\\d+))?-flash$")
+    private val FLASH = Regex("^gemini-(\\d+)(?:\\.(\\d+))?-flash(-lite)?$")
 
-    fun pickFlash(names: List<String>): String? {
-        return names
+    /** Newest stable Flash first, then Flash-Lite as a lighter fallback when the main models are overloaded. */
+    fun rankFlash(names: List<String>): List<String> {
+        val parsed = names
             .map { it.removePrefix("models/") }
+            .distinct()
             .mapNotNull { name ->
                 FLASH.matchEntire(name)?.let { match ->
-                    val major = match.groupValues[1].toInt()
-                    val minor = match.groupValues[2].toIntOrNull() ?: 0
-                    Triple(major, minor, name)
+                    Candidate(
+                        name,
+                        match.groupValues[3].isNotEmpty(),
+                        match.groupValues[1].toInt(),
+                        match.groupValues[2].toIntOrNull() ?: 0
+                    )
                 }
             }
-            .maxWithOrNull(compareBy({ it.first }, { it.second }))
-            ?.third
+        return parsed
+            .sortedWith(compareBy<Candidate>({ it.lite }, { -it.major }, { -it.minor }))
+            .map { it.name }
     }
+
+    fun pickFlash(names: List<String>): String? = rankFlash(names).firstOrNull()
+
+    private data class Candidate(val name: String, val lite: Boolean, val major: Int, val minor: Int)
 }
