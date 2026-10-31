@@ -22,7 +22,7 @@ data class HealthSession(
         RUNNING_TREADMILL -> "Carrera en cinta"
         WALKING -> "Caminata"
         BIKING, BIKING_STATIONARY -> "Ciclismo"
-        else -> "Entrenamiento"
+        else -> "Entrenamiento (tipo $exerciseType)"
     }
 
     fun paceSecPerKm(): Int? {
@@ -30,6 +30,9 @@ data class HealthSession(
         if (km < 0.1) return null
         return (durationMin * 60.0 / km).toInt()
     }
+
+    /** One line for the session chooser. */
+    fun chooserLabel(dateText: String): String = "$dateText · ${shortText()}"
 
     /** Short text for the notification. */
     fun shortText(): String {
@@ -62,6 +65,14 @@ data class HealthSession(
     }
 
     companion object {
+        private const val MIN_DISTANCE_M = 500.0
+
+        /** Latest session with real distance (a run, ride or walk); falls back to the latest of any kind. */
+        fun pickBest(sessions: List<HealthSession>): HealthSession? {
+            val newestFirst = sessions.sortedByDescending { it.endMillis }
+            return newestFirst.firstOrNull { (it.distanceM ?: 0.0) >= MIN_DISTANCE_M } ?: newestFirst.firstOrNull()
+        }
+
         const val RUNNING = 56
         const val RUNNING_TREADMILL = 57
         const val WALKING = 79

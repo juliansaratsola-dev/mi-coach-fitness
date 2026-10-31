@@ -44,6 +44,7 @@
     <string name="tab_settings">Config</string>
     <string name="wip_text">Próximamente</string>
     <string name="setup_welcome">¡Bienvenido! Primero configura la app: concede los permisos, el acceso de uso y guarda tu API key de Gemini. Después vuelve a Inicio y activa el monitoreo.</string>
+    <string name="hc_choose">¿Qué entrenamiento analizar?</string>
     <string name="coach_pending">Capturas listas para analizar: %1$d</string>
     <string name="coach_notes_hint">Sensaciones (opcional): tibias, gemelos, ánimo…</string>
     <string name="coach_generate">Generar review</string>
