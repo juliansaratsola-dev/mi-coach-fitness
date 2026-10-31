@@ -135,6 +135,10 @@ class CoachActivity : Activity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_HEALTH_OPTIONAL) {
+            chooseHealthSession()
+            return
+        }
         if (requestCode != REQUEST_HEALTH) return
         if (HealthConnectReader(this).hasPermissions()) {
             prefs.healthWatchEnabled = true
@@ -154,6 +158,16 @@ class CoachActivity : Activity() {
         if (!HealthConnectReader(this).hasPermissions()) {
             generate(fromHealth = true)
             return
+        }
+        if (!prefs.healthOptionalAsked) {
+            prefs.healthOptionalAsked = true
+            val missing = HealthConnectReader.OPTIONAL_PERMISSIONS.filter {
+                checkSelfPermission(it) != android.content.pm.PackageManager.PERMISSION_GRANTED
+            }
+            if (missing.isNotEmpty()) {
+                requestPermissions(missing.toTypedArray(), REQUEST_HEALTH_OPTIONAL)
+                return
+            }
         }
         healthButton.isEnabled = false
         Thread {
@@ -188,13 +202,14 @@ class CoachActivity : Activity() {
             }
             if (!HealthConnectReader(this).hasPermissions()) {
                 requestPermissions(
-                    HealthConnectReader.REQUIRED_PERMISSIONS + HealthConnectReader.BACKGROUND_PERMISSION,
+                    HealthConnectReader.REQUIRED_PERMISSIONS + HealthConnectReader.OPTIONAL_PERMISSIONS +
+                        HealthConnectReader.BACKGROUND_PERMISSION,
                     REQUEST_HEALTH
                 )
                 return
             }
         }
-        val uris = if (fromHealth) emptyList() else prefs.pendingCaptures().map { Uri.parse(it) }
+        val uris = prefs.pendingCaptures().map { Uri.parse(it) }
         if ((!fromHealth && uris.isEmpty()) || busy) return
         busy = true
         generateButton.isEnabled = false
@@ -209,10 +224,11 @@ class CoachActivity : Activity() {
                         ?: throw CoachException(getString(R.string.hc_none))
                     val sessionDate = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(session.startMillis))
                     val raw = GeminiClient(applicationContext, key)
-                        .review(emptyList(), store.all(), today, notes, "Fecha del entrenamiento: $sessionDate\n" + session.toPromptText())
+                        .review(uris, store.all(), today, notes, "Fecha del entrenamiento: $sessionDate\n" + session.toPromptText())
                     raw.put("date", sessionDate)
                     store.add(raw, sessionDate)
                     prefs.lastHealthSessionEnd = session.endMillis
+                    prefs.clearPendingCaptures()
                 } else {
                     val raw = GeminiClient(applicationContext, key).review(uris, store.all(), today, notes)
                     store.add(raw, today)
@@ -304,5 +320,6 @@ class CoachActivity : Activity() {
         const val EXTRA_AUTO_GENERATE = "auto_generate"
         const val EXTRA_FROM_HEALTH = "from_health"
         private const val REQUEST_HEALTH = 42
+        private const val REQUEST_HEALTH_OPTIONAL = 43
     }
 }

@@ -32,7 +32,7 @@
     <string name="share_failed">No se pudo abrir el menú para compartir.</string>
     <string name="coach_title">Coach</string>
     <string name="capture_added">Captura agregada (%1$d). Cuando termines, toca Analizar entreno.</string>
-    <string name="hc_button">Usar Health Connect (sin capturas)</string>
+    <string name="hc_button">Usar Health Connect</string>
     <string name="hc_unsupported">Health Connect integrado requiere Android 14 o superior.</string>
     <string name="hc_none">No encontré entrenamientos nuevos en Health Connect. Revisa que Garmin Connect escriba ahí y que sincronizó el reloj.</string>
     <string name="hc_alert_title">¿Quieres analizar tu entrenamiento?</string>

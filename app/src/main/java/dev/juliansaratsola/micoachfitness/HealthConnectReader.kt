@@ -8,12 +8,16 @@ import android.health.connect.ReadRecordsRequestUsingFilters
 import android.health.connect.ReadRecordsResponse
 import android.health.connect.TimeInstantRangeFilter
 import android.health.connect.TimeRangeFilter
+import android.health.connect.datatypes.ActiveCaloriesBurnedRecord
+import android.health.connect.datatypes.DataOrigin
 import android.health.connect.datatypes.DistanceRecord
 import android.health.connect.datatypes.ElevationGainedRecord
 import android.health.connect.datatypes.ExerciseSessionRecord
 import android.health.connect.datatypes.HeartRateRecord
 import android.health.connect.datatypes.PowerRecord
+import android.health.connect.datatypes.SpeedRecord
 import android.health.connect.datatypes.StepsCadenceRecord
+import android.health.connect.datatypes.TotalCaloriesBurnedRecord
 import android.os.Build
 import android.os.OutcomeReceiver
 import java.time.Instant
@@ -61,28 +65,38 @@ class HealthConnectReader(private val context: Context) {
             .setStartTime(session.startTime)
             .setEndTime(session.endTime)
             .build()
+        // Only count data written by the same app as the session, so phone sensors or other apps do not mix in.
+        val origin = session.metadata.dataOrigin
         return HealthSession(
             startMillis = session.startTime.toEpochMilli(),
             endMillis = session.endTime.toEpochMilli(),
             exerciseType = session.exerciseType,
             title = session.title?.toString(),
-            distanceM = aggregate(range, DistanceRecord.DISTANCE_TOTAL) { it.inMeters },
-            avgHr = aggregate(range, HeartRateRecord.BPM_AVG) { it },
-            maxHr = aggregate(range, HeartRateRecord.BPM_MAX) { it },
-            avgPowerW = aggregate(range, PowerRecord.POWER_AVG) { it.inWatts },
-            elevationGainM = aggregate(range, ElevationGainedRecord.ELEVATION_GAINED_TOTAL) { it.inMeters },
-            cadenceSpm = aggregate(range, StepsCadenceRecord.STEPS_CADENCE_RATE_AVG) { it }
+            distanceM = aggregate(range, origin, DistanceRecord.DISTANCE_TOTAL) { it.inMeters },
+            avgHr = aggregate(range, origin, HeartRateRecord.BPM_AVG) { it },
+            maxHr = aggregate(range, origin, HeartRateRecord.BPM_MAX) { it },
+            avgPowerW = aggregate(range, origin, PowerRecord.POWER_AVG) { it.inWatts },
+            elevationGainM = aggregate(range, origin, ElevationGainedRecord.ELEVATION_GAINED_TOTAL) { it.inMeters },
+            cadenceSpm = aggregate(range, origin, StepsCadenceRecord.STEPS_CADENCE_RATE_AVG) { it },
+            origin = origin.packageName,
+            minHr = aggregate(range, origin, HeartRateRecord.BPM_MIN) { it },
+            maxPowerW = aggregate(range, origin, PowerRecord.POWER_MAX) { it.inWatts },
+            maxCadenceSpm = aggregate(range, origin, StepsCadenceRecord.STEPS_CADENCE_RATE_MAX) { it },
+            maxSpeedKmh = aggregate(range, origin, SpeedRecord.SPEED_MAX) { it.inMetersPerSecond * 3.6 },
+            activeKcal = aggregate(range, origin, ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL) { it.inKilocalories },
+            totalKcal = aggregate(range, origin, TotalCaloriesBurnedRecord.ENERGY_TOTAL) { it.inKilocalories }
         )
     }
 
     // Each metric is aggregated alone so one missing permission or record type does not hide the rest.
     private fun <T, R> aggregate(
         range: TimeRangeFilter,
+        origin: DataOrigin,
         type: android.health.connect.datatypes.AggregationType<T>,
         convert: (T) -> R
     ): R? {
         val hc = manager ?: return null
-        val request = AggregateRecordsRequest.Builder<T>(range).addAggregationType(type).build()
+        val request = AggregateRecordsRequest.Builder<T>(range).addAggregationType(type).addDataOriginsFilter(origin).build()
         val response = await<android.health.connect.AggregateRecordsResponse<T>> { receiver ->
             hc.aggregate(request, executor, receiver)
         } ?: return null
@@ -117,6 +131,12 @@ class HealthConnectReader(private val context: Context) {
             "android.permission.health.READ_POWER",
             "android.permission.health.READ_ELEVATION_GAINED",
             "android.permission.health.READ_STEPS"
+        )
+        /** Extra metrics; the review still works if the user does not grant them. */
+        val OPTIONAL_PERMISSIONS = arrayOf(
+            "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
+            "android.permission.health.READ_TOTAL_CALORIES_BURNED",
+            "android.permission.health.READ_SPEED"
         )
         const val BACKGROUND_PERMISSION = "android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND"
 
