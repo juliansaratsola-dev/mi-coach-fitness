@@ -53,6 +53,14 @@
         </activity>
 
         <activity
+            android:name=".SettingsActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".WipActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".CoachActivity"
             android:exported="false"
             android:label="@string/coach_title"

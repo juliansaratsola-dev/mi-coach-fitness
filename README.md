@@ -15,7 +15,7 @@ App Android (Kotlin) que detecta capturas de Garmin Connect y permite acumularla
 
 ## Coach con Gemini
 
-1. Crea una API key de Gemini y guárdala en la pantalla principal. La clave queda en las preferencias privadas de la app en este dispositivo; no se incluye en el repositorio.
+1. Crea una API key de Gemini y guárdala en la pestaña **Config**. La clave queda en las preferencias privadas de la app en este dispositivo; no se incluye en el repositorio.
 2. Desde cada notificación de Garmin, pulsa **Agregar al Coach** para ir reuniendo las capturas de resumen y estadísticas.
 3. Abre **Coach**, añade opcionalmente cómo te sentiste y pulsa **Generar review**.
 4. El review muestra una nota general y notas por sección, los datos detectados, una comparativa con las últimas sesiones, sugerencias concretas y preguntas de seguimiento. La sesión analizada pasa al historial local para contextualizar próximos reviews.
@@ -65,12 +65,12 @@ Sin acceso de uso el filtro Garmin no puede ejecutarse. En ese caso el MVP sigue
 
 1. Compila e instala el APK debug en un dispositivo o emulador con Android 11 o superior.
 2. Abre **Mi Coach Fitness**.
-3. Pulsa **Revisar permisos** y concede notificaciones y acceso a todas las fotos.
+3. En la pestaña **Config** (se abre sola la primera vez) pulsa **Revisar permisos** y concede notificaciones y acceso a todas las fotos.
 4. Pulsa **Abrir acceso de uso** y activa Mi Coach Fitness.
 5. Activa el switch **Monitoreo activo**. Debe quedar una notificación permanente de monitoreo.
 6. Abre Garmin Connect (`com.garmin.android.apps.connectmobile`) y toma una captura. El archivo suele llamarse `Screenshot_….png` o `Captura de pantalla….png` y vivir en `Pictures/Screenshots`.
 7. En unos segundos debe llegar la notificación **Captura de Garmin detectada**. Pulsa **Agregar Coach** para acumular cada captura; repite con las estadísticas que quieras incluir.
-8. Abre **Mi Coach Fitness**, guarda tu API key de Gemini y entra en **Coach**. Añade cómo te sentiste (opcional) y genera el review.
+8. Abre **Mi Coach Fitness**, guarda tu API key de Gemini en **Config** y entra en la pestaña **Coach**. Añade cómo te sentiste (opcional) y genera el review.
 9. Comprueba las notas, sugerencias y comparativa; la sesión se conserva en el historial local para próximos reviews.
 ### Review sin capturas (Health Connect)
 
@@ -102,7 +102,7 @@ Los tests de JVM cubren los marcadores de ruta, la ventana de 10 s y el contexto
 
 ## Mapa rápido
 
-- `MainActivity`: switch de monitoreo y estado de permisos.
+- `MainActivity` (Inicio): switch de monitoreo. `SettingsActivity` (Config): permisos, acceso de uso y API key. `BottomNav`: barra inferior de 4 pestañas (Inicio, Coach, Próximamente, Config).
 - `CoachActivity`: capturas pendientes, sensaciones, review con notas, sugerencias e historial.
 - `GeminiClient` / `CoachPrompt`: solicitud de análisis multimodal y contexto comparativo.
 - `WorkoutStore` / `WorkoutRecord`: historial local de métricas y reviews.

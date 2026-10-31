@@ -109,7 +109,7 @@ class CoachActivity : Activity() {
             setPadding(0, dp(16), 0, 0)
         }
         root.addView(reviewContainer)
-        setContentView(ScrollView(this).apply { addView(root) })
+        BottomNav.attach(this, ScrollView(this).apply { addView(root) }, BottomNav.Tab.COACH)
     }
 
     private fun refresh() {
