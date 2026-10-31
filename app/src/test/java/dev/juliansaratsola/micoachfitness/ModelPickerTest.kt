@@ -28,6 +28,18 @@ class ModelPickerTest {
     }
 
     @Test
+    fun fallbackSpansGenerations() {
+        val names = listOf(
+            "models/gemini-3.8-flash", "models/gemini-3.7-flash", "models/gemini-2.5-flash",
+            "models/gemini-3.5-flash-lite", "models/gemini-2.5-flash-lite"
+        )
+        assertEquals(
+            listOf("gemini-3.8-flash", "gemini-2.5-flash", "gemini-3.5-flash-lite"),
+            ModelPicker.fallbackOrder(names).take(3)
+        )
+    }
+
+    @Test
     fun returnsNullWithoutFlash() {
         assertNull(ModelPicker.pickFlash(listOf("models/gemini-3.8-pro", "models/embedding-001")))
     }
