@@ -16,9 +16,15 @@ class CoachException(message: String, val retryable: Boolean = false, val modelU
 /** Minimal Gemini REST client: sends screenshots + history prompt and returns the structured JSON review. */
 class GeminiClient(private val context: Context, private val apiKey: String) {
 
-    fun review(images: List<Uri>, history: List<WorkoutRecord>, todayIso: String, notes: String?): JSONObject {
+    fun review(
+        images: List<Uri>,
+        history: List<WorkoutRecord>,
+        todayIso: String,
+        notes: String?,
+        workoutData: String? = null
+    ): JSONObject {
         val parts = JSONArray()
-        parts.put(JSONObject().put("text", CoachPrompt.userPrompt(history, todayIso, notes)))
+        parts.put(JSONObject().put("text", CoachPrompt.userPrompt(history, todayIso, notes, workoutData)))
         for (uri in images) {
             parts.put(
                 JSONObject().put(

@@ -197,6 +197,7 @@ tasks.register("testDebugUnitTest") {
             project.file("src/main/java/dev/juliansaratsola/micoachfitness/WorkoutRecord.kt"),
             project.file("src/main/java/dev/juliansaratsola/micoachfitness/CoachPrompt.kt"),
             project.file("src/main/java/dev/juliansaratsola/micoachfitness/ModelPicker.kt"),
+            project.file("src/main/java/dev/juliansaratsola/micoachfitness/HealthSession.kt"),
             project.file("src/test/java")
         )
         runTool(

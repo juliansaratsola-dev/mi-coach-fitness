@@ -32,6 +32,8 @@ class CoachActivity : Activity() {
     private lateinit var reviewContainer: LinearLayout
     private var busy = false
     private var autoGenerate = false
+    private var autoHealth = false
+    private lateinit var healthButton: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,12 +56,16 @@ class CoachActivity : Activity() {
     private fun runPendingAutoGenerate() {
         if (!autoGenerate) return
         autoGenerate = false
-        generate()
+        val health = autoHealth
+        autoHealth = false
+        generate(health)
     }
 
     private fun handleIntent(intent: Intent?) {
         if (intent?.getBooleanExtra(EXTRA_AUTO_GENERATE, false) == true) {
             autoGenerate = true
+            autoHealth = intent.getBooleanExtra(EXTRA_FROM_HEALTH, false)
+            intent.removeExtra(EXTRA_FROM_HEALTH)
             intent.removeExtra(EXTRA_AUTO_GENERATE)
         }
         val uri = intent?.data ?: return
@@ -86,6 +92,11 @@ class CoachActivity : Activity() {
             setOnClickListener { generate() }
         }
         root.addView(generateButton)
+        healthButton = Button(this).apply {
+            text = getString(R.string.hc_button)
+            setOnClickListener { generate(fromHealth = true) }
+        }
+        root.addView(healthButton)
         root.addView(Button(this).apply {
             text = getString(R.string.coach_clear)
             setOnClickListener {
@@ -105,6 +116,7 @@ class CoachActivity : Activity() {
         val count = prefs.pendingCaptures().size
         pendingText.text = getString(R.string.coach_pending, count)
         generateButton.isEnabled = count > 0 && !busy
+        healthButton.isEnabled = !busy
         if (!busy) {
             reviewContainer.removeAllViews()
             try {
@@ -121,29 +133,63 @@ class CoachActivity : Activity() {
         }
     }
 
-    private fun generate() {
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != REQUEST_HEALTH) return
+        if (HealthConnectReader(this).hasPermissions()) {
+            prefs.healthWatchEnabled = true
+            generate(fromHealth = true)
+        } else {
+            Toast.makeText(this, R.string.hc_none, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun generate(fromHealth: Boolean = false) {
         val key = prefs.geminiApiKey
         if (key.isBlank()) {
             Toast.makeText(this, R.string.coach_missing_key, Toast.LENGTH_LONG).show()
             return
         }
-        val uris = prefs.pendingCaptures().map { Uri.parse(it) }
-        if (uris.isEmpty() || busy) return
+        if (fromHealth) {
+            if (!HealthConnectReader.supported()) {
+                Toast.makeText(this, R.string.hc_unsupported, Toast.LENGTH_LONG).show()
+                return
+            }
+            if (!HealthConnectReader(this).hasPermissions()) {
+                requestPermissions(
+                    HealthConnectReader.REQUIRED_PERMISSIONS + HealthConnectReader.BACKGROUND_PERMISSION,
+                    REQUEST_HEALTH
+                )
+                return
+            }
+        }
+        val uris = if (fromHealth) emptyList() else prefs.pendingCaptures().map { Uri.parse(it) }
+        if ((!fromHealth && uris.isEmpty()) || busy) return
         busy = true
         generateButton.isEnabled = false
+        healthButton.isEnabled = false
         generateButton.text = getString(R.string.coach_generating)
         val notes = notesInput.text.toString()
         val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
         Thread {
             val outcome = runCatching {
-                val raw = GeminiClient(applicationContext, key).review(uris, store.all(), today, notes)
-                store.add(raw, today)
+                if (fromHealth) {
+                    val session = HealthConnectReader(applicationContext).latestSession()
+                        ?: throw CoachException(getString(R.string.hc_none))
+                    val raw = GeminiClient(applicationContext, key)
+                        .review(emptyList(), store.all(), today, notes, session.toPromptText())
+                    store.add(raw, today)
+                    prefs.lastHealthSessionEnd = session.endMillis
+                } else {
+                    val raw = GeminiClient(applicationContext, key).review(uris, store.all(), today, notes)
+                    store.add(raw, today)
+                }
             }
             runOnUiThread {
                 busy = false
                 generateButton.text = getString(R.string.coach_generate)
                 outcome.onSuccess {
-                    prefs.clearPendingCaptures()
+                    if (!fromHealth) prefs.clearPendingCaptures()
                     notesInput.setText("")
                 }.onFailure {
                     Toast.makeText(
@@ -223,5 +269,7 @@ class CoachActivity : Activity() {
 
     companion object {
         const val EXTRA_AUTO_GENERATE = "auto_generate"
+        const val EXTRA_FROM_HEALTH = "from_health"
+        private const val REQUEST_HEALTH = 42
     }
 }
