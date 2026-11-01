@@ -198,6 +198,7 @@ tasks.register("testDebugUnitTest") {
         val classpath = junitFiles.files.joinToString(File.pathSeparator) { it.absolutePath }
         val sources = listOf(
             project.file("src/main/java/dev/juliansaratsola/micoachfitness/ScreenshotClassifier.kt"),
+            project.file("src/main/java/dev/juliansaratsola/micoachfitness/ScreenshotScanQueue.kt"),
             project.file("src/main/java/dev/juliansaratsola/micoachfitness/GarminActivityWindow.kt"),
             project.file("src/main/java/dev/juliansaratsola/micoachfitness/EffortCalculator.kt"),
             project.file("src/main/java/dev/juliansaratsola/micoachfitness/WorkoutRecord.kt"),

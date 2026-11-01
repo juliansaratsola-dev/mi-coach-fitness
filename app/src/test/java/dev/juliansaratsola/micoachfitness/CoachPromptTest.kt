@@ -91,6 +91,54 @@ class CoachPromptTest {
     }
 
     @Test
+    fun responseSchemaRequiresNullableTechnicalMetricFields() {
+        val metrics = JSONObject(CoachPrompt.RESPONSE_SCHEMA)
+            .getJSONObject("properties").getJSONObject("metrics")
+        val required = metrics.getJSONArray("required").let { array ->
+            (0 until array.length()).map { array.getString(it) }
+        }
+        listOf(
+            "cadence", "maxCadence", "strideM", "verticalRatioPct",
+            "verticalOscCm", "contactMs", "powerW", "maxPowerW", "ascentM"
+        ).forEach { key ->
+            assertTrue(key, key in required)
+            assertTrue(key, metrics.getJSONObject("properties").getJSONObject(key).getBoolean("nullable"))
+        }
+        assertTrue(CoachPrompt.SYSTEM_INSTRUCTION.contains("DINÁMICA DE CARRERA"))
+        assertTrue(CoachPrompt.SYSTEM_INSTRUCTION.contains("nunca digas que no hay datos de dinámica"))
+    }
+
+    @Test
+    fun technicalSupplementFillsMissingMetricsWithoutOverwritingDetectedValues() {
+        val review = JSONObject(
+            """{"metrics":{"cadence":180,"strideM":null,"contactMs":null,"verticalOscCm":null,"verticalRatioPct":null},"tecnica":"No hay datos"}"""
+        )
+        val supplement = JSONObject(
+            """{"metrics":{"cadence":170,"strideM":0.99,"contactMs":250,"verticalOscCm":8.2,"verticalRatioPct":8.2,"maxCadence":234,"powerW":269,"maxPowerW":353,"ascentM":37},"tecnica":"Cadencia 180 ppm y zancada de 0,99 m; contacto 250 ms, oscilación 8,2 cm y ratio 8,2%."}"""
+        )
+
+        assertTrue(WorkoutJson.needsTechnicalMetricSupplement(review))
+        WorkoutJson.mergeTechnicalSupplement(review, supplement)
+
+        val metrics = review.getJSONObject("metrics")
+        assertEquals(180, metrics.getInt("cadence"))
+        assertEquals(0.99, metrics.getDouble("strideM"), 0.001)
+        assertEquals(250, metrics.getInt("contactMs"))
+        assertEquals(353, metrics.getInt("maxPowerW"))
+        assertEquals(supplement.getString("tecnica"), review.getString("tecnica"))
+        assertFalse(WorkoutJson.needsTechnicalMetricSupplement(review))
+    }
+
+    @Test
+    fun technicalSupplementRetriesWhenNarrativeDeniesAlreadyExtractedMetrics() {
+        val review = JSONObject(
+            """{"metrics":{"cadence":180,"strideM":0.99,"contactMs":250,"verticalOscCm":8.2,"verticalRatioPct":8.2},"tecnica":"No hay datos de dinámicas de carrera disponibles en la captura. Imposible evaluar cadencia o zancada."}"""
+        )
+
+        assertTrue(WorkoutJson.needsTechnicalMetricSupplement(review))
+    }
+
+    @Test
     fun systemInstructionEnforcesTheVerdadPuraRules() {
         val system = CoachPrompt.SYSTEM_INSTRUCTION
         listOf(

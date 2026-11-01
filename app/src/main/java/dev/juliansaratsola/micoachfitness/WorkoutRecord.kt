@@ -62,7 +62,8 @@ data class WorkoutRecord(
     val tecnica: String = "",
     val cardio: String = "",
     val potenciaRendimiento: String = "",
-    val comparativaPoblacional: String = ""
+    val comparativaPoblacional: String = "",
+    val technicalMetricsWarning: Boolean = false
 ) {
     fun paceText(): String = formatPace(paceSecPerKm)
 

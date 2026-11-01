@@ -17,8 +17,17 @@ object WorkoutJson {
     const val KEY_POWER = "potencia_y_consistencia"
     const val KEY_COMPARISON = "comparativa_meritocratica"
     const val KEY_VERDICT = "veredicto_trinchera"
+    const val KEY_TECHNICAL_WARNING = "lectura_tecnica_pendiente"
 
     const val MAX_FEELINGS_CHARS = 500
+    private val TECHNICAL_METRICS = listOf(
+        "cadence", "maxCadence", "strideM", "verticalRatioPct", "verticalOscCm",
+        "contactMs", "powerW", "maxPowerW", "ascentM"
+    )
+    private val RUNNING_DYNAMICS_METRICS = listOf(
+        "cadence", "maxCadence", "strideM", "verticalRatioPct", "verticalOscCm", "contactMs"
+    )
+    private const val MIN_RUNNING_DYNAMICS_METRICS = 3
 
     /**
      * Builds a record from stored JSON. Workouts saved before the effort model have no `puntos_esfuerzo`, so it is
@@ -87,7 +96,8 @@ object WorkoutJson {
             tecnica = json.str("tecnica"),
             cardio = json.str("cardio"),
             potenciaRendimiento = json.str("potencia_rendimiento"),
-            comparativaPoblacional = json.str("comparativa_poblacional")
+            comparativaPoblacional = json.str("comparativa_poblacional"),
+            technicalMetricsWarning = json.optBoolean(KEY_TECHNICAL_WARNING, false)
         )
     }
 
@@ -155,6 +165,31 @@ object WorkoutJson {
 
     /** True when the response carries at least one of the five review texts. */
     fun hasReview(json: JSONObject): Boolean = !reviewOf(json).isEmpty
+
+    /** True when a screenshot review failed to extract any of its visible running-dynamics metrics. */
+    fun needsTechnicalMetricSupplement(json: JSONObject): Boolean {
+        val metrics = json.optJSONObject("metrics") ?: return true
+        val detected = RUNNING_DYNAMICS_METRICS.count { key -> metrics.has(key) && !metrics.isNull(key) }
+        val technique = json.optString(KEY_TECHNIQUE).lowercase()
+        val contradictsMetrics = detected > 0 && technique.contains("no hay datos")
+        return detected < MIN_RUNNING_DYNAMICS_METRICS || contradictsMetrics
+    }
+
+    /** Fills only missing technical fields, preserving any values already read by the main review. */
+    fun mergeTechnicalSupplement(review: JSONObject, supplement: JSONObject): JSONObject {
+        val target = review.optJSONObject("metrics") ?: JSONObject().also { review.put("metrics", it) }
+        val extracted = supplement.optJSONObject("metrics") ?: JSONObject()
+        TECHNICAL_METRICS.forEach { key ->
+            if ((!target.has(key) || target.isNull(key)) && extracted.has(key) && !extracted.isNull(key)) {
+                target.put(key, extracted.get(key))
+            }
+        }
+        val hasTechnicalData = RUNNING_DYNAMICS_METRICS.any { key -> target.has(key) && !target.isNull(key) }
+        val technique = supplement.optString(KEY_TECHNIQUE).trim()
+        if (hasTechnicalData && technique.isNotBlank()) review.put(KEY_TECHNIQUE, technique)
+        if (hasTechnicalData) review.remove(KEY_TECHNICAL_WARNING)
+        return review
+    }
 
     private fun cleanFeelings(notes: String?): String =
         notes.orEmpty().trim().replace(Regex("[ \\t]*\\r?\\n[ \\t]*"), "\n").take(MAX_FEELINGS_CHARS)

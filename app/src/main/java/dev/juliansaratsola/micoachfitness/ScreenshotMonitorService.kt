@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.ContentResolver
+import android.content.ContentUris
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.database.ContentObserver
@@ -25,10 +26,10 @@ class ScreenshotMonitorService : Service() {
     private val reader by lazy { MediaStoreScreenshotReader(this) }
     private val garminChecker by lazy { GarminUsageChecker(this) }
     private val scanScheduled = AtomicBoolean(false)
+    private val scanQueue = ScreenshotScanQueue()
     private val inFlight = mutableSetOf<Long>()
     private val scanLock = Any()
     private var observer: ContentObserver? = null
-    private var pendingUri: Uri? = null
 
     @Volatile
     private var destroyed = false
@@ -94,17 +95,20 @@ class ScreenshotMonitorService : Service() {
     private fun scheduleScan(uri: Uri?) {
         if (destroyed) return
         synchronized(scanLock) {
-            if (uri != null) pendingUri = uri
+            scanQueue.enqueue(MediaStoreScreenshotReader.imageIdFrom(uri))
             if (!scanScheduled.compareAndSet(false, true)) return
         }
         handler.postDelayed({
-            val target = synchronized(scanLock) {
+            val batch = synchronized(scanLock) {
                 scanScheduled.set(false)
-                val value = pendingUri
-                pendingUri = null
-                value
+                scanQueue.drain()
             }
-            worker.execute { scan(target) }
+            worker.execute {
+                if (batch.requiresRecentScan) scan(null)
+                batch.imageIds.forEach { id ->
+                    scan(ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id))
+                }
+            }
         }, SCAN_DELAY_MS)
     }
 
@@ -146,12 +150,13 @@ class ScreenshotMonitorService : Service() {
                         return
                     }
                     prefs.markHandled(image.id)
-                    Log.i(TAG, "Screenshot ${image.id} ignored: Garmin not in the 10s window")
+                    Log.w(TAG, "Garmin activity not confirmed for screenshot ${image.id}; notifying as fallback")
+                    handler.post { notifyAnalyze(image, garminConfirmed = false) }
                 }
                 GarminUsageChecker.CheckResult.UNAVAILABLE -> {
                     Log.w(TAG, "Usage access unavailable; notifying without Garmin confirmation")
                     prefs.markHandled(image.id)
-                    handler.post { notifyAnalyze(image) }
+                    handler.post { notifyAnalyze(image, garminConfirmed = false) }
                 }
                 GarminUsageChecker.CheckResult.ACTIVE -> {
                     prefs.markHandled(image.id)
@@ -237,7 +242,7 @@ class ScreenshotMonitorService : Service() {
         }
     }
 
-    private fun notifyAnalyze(image: CapturedImage) {
+    private fun notifyAnalyze(image: CapturedImage, garminConfirmed: Boolean = true) {
         if (destroyed || !PermissionHelper.hasNotificationAccess(this)) return
         if (image.uri.scheme != ContentResolver.SCHEME_CONTENT) return
         val requestCode = (image.id % Int.MAX_VALUE).toInt()
@@ -261,9 +266,13 @@ class ScreenshotMonitorService : Service() {
         )
         val notification = Notification.Builder(this, CHANNEL_ALERTS)
             .setSmallIcon(R.drawable.ic_stat_monitor)
-            .setContentTitle(getString(R.string.alert_title))
-            .setContentText(getString(R.string.alert_text))
-            .setStyle(Notification.BigTextStyle().bigText(getString(R.string.alert_text)))
+            .setContentTitle(getString(if (garminConfirmed) R.string.alert_title else R.string.alert_title_unconfirmed))
+            .setContentText(getString(if (garminConfirmed) R.string.alert_text else R.string.alert_text_unconfirmed))
+            .setStyle(
+                Notification.BigTextStyle().bigText(
+                    getString(if (garminConfirmed) R.string.alert_text else R.string.alert_text_unconfirmed)
+                )
+            )
             .setAutoCancel(false)
             .setContentIntent(pending)
             .addAction(
@@ -281,8 +290,9 @@ class ScreenshotMonitorService : Service() {
                 ).build()
             )
             .setCategory(Notification.CATEGORY_RECOMMENDATION)
+            .setOnlyAlertOnce(false)
             .build()
-        val alertId = if (requestCode == FG_NOTIFICATION_ID) requestCode + 1 else requestCode
+        val alertId = ScreenshotNotificationIds.forImage(image.id)
         try {
             val manager = getSystemService(NotificationManager::class.java)
             manager?.notify(alertId, notification)

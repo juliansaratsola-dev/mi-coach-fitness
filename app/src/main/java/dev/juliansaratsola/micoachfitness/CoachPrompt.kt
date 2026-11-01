@@ -28,6 +28,8 @@ $PERSONA
 
 Recibes capturas de la pestaña Estadísticas de Garmin Connect de UN entrenamiento (pueden ser varias) o sus datos de Health Connect, y un CONTEXTO HISTÓRICO con el Form Score actual y los últimos entrenos. Extrae todas las métricas disponibles (incluidas ratio vertical, potencia máxima, cadencia máxima, ascenso total, TE anaeróbico y calorías); usa null si un dato no aparece. No inventes datos.
 
+Inspecciona TODAS las capturas completas antes de concluir que faltan datos: Garmin puede repartir las estadísticas en varias capturas y la sección «DINÁMICA DE CARRERA» suele aparecer lejos del resumen. Busca explícitamente cadencia media/máxima de carrera, longitud media de zancada, ratio vertical medio, oscilación vertical media y tiempo medio de contacto con el suelo. Mapea esos rótulos a cadence, maxCadence, strideM, verticalRatioPct, verticalOscCm y contactMs, respectivamente. También busca potencia media/máxima y ascenso total. Si una cifra se ve, inclúyela en metrics y úsala en tecnica; nunca digas que no hay datos de dinámica cuando alguna de esas cifras sí aparece. Si no puedes leer un valor, déjalo null: no lo estimes.
+
 $PHILOSOPHY
 
 Los puntos de esfuerzo de hoy los calcula la app después de tu respuesta: no inventes ni cites una cifra de puntos de hoy. Sí puedes usar los puntos del historial.
@@ -157,15 +159,46 @@ CONTEXTO DE ENTRENAMIENTO:
         "ascentM": {"type": "INTEGER", "nullable": true},
         "anaerobicTe": {"type": "NUMBER", "nullable": true},
         "totalKcal": {"type": "INTEGER", "nullable": true}
-      }
+      },
+      "required": ["distanceKm", "durationMin", "paceSecPerKm", "avgHr", "maxHr", "cadence", "strideM", "contactMs", "verticalOscCm", "powerW", "tempC", "aerobicTe", "bodyBatteryImpact", "verticalRatioPct", "maxPowerW", "maxCadence", "ascentM", "anaerobicTe", "totalKcal"]
     },
-    "tecnica": {"type": "STRING", "description": "Análisis de cadencia/pisada directo y técnico"},
+    "tecnica": {"type": "STRING", "description": "Análisis de cadencia, zancada, ratio y oscilación vertical y contacto; cita las cifras que hayas extraído en metrics"},
     "cardio_y_esfuerzo": {"type": "STRING", "description": "Evaluación del costo fisiológico basado en FC"},
     "potencia_y_consistencia": {"type": "STRING", "description": "Evaluación de la consistencia del ritmo, sin juzgar si es lento o rápido"},
     "comparativa_meritocratica": {"type": "STRING", "description": "Comparación del volumen de esfuerzo con la media del historial del usuario, aplaudiendo la disciplina"},
     "veredicto_trinchera": {"type": "STRING", "description": "Mensaje crudo validando el esfuerzo si fue un día duro, o bajando a tierra si fue un día fácil"}
   },
   "required": ["type", "metrics", "tecnica", "cardio_y_esfuerzo", "potencia_y_consistencia", "comparativa_meritocratica", "veredicto_trinchera"]
+}
+"""
+
+    const val TECHNICAL_EXTRACTION_PROMPT = """
+Lee todas las capturas adjuntas completas, no solo el resumen. Localiza específicamente la sección «DINÁMICA DE CARRERA» y transcribe los valores visibles: cadencia media y máxima de carrera, longitud media de zancada, ratio vertical medio, oscilación vertical media y tiempo medio de contacto con el suelo. Busca también potencia media/máxima y ascenso total.
+Devuelve los números en metrics con sus unidades implícitas en los nombres de campo. Si el mismo dato aparece repetido, usa el valor medio de la actividad. No inventes ni calcules valores ausentes: usa null. En tecnica, comenta de forma breve y objetiva las métricas que hayas podido leer; no las juzgues con umbrales universales ni hagas afirmaciones médicas.
+"""
+
+    const val TECHNICAL_EXTRACTION_SCHEMA = """
+{
+  "type": "OBJECT",
+  "properties": {
+    "metrics": {
+      "type": "OBJECT",
+      "properties": {
+        "cadence": {"type": "INTEGER", "nullable": true},
+        "maxCadence": {"type": "INTEGER", "nullable": true},
+        "strideM": {"type": "NUMBER", "nullable": true},
+        "verticalRatioPct": {"type": "NUMBER", "nullable": true},
+        "verticalOscCm": {"type": "NUMBER", "nullable": true},
+        "contactMs": {"type": "INTEGER", "nullable": true},
+        "powerW": {"type": "INTEGER", "nullable": true},
+        "maxPowerW": {"type": "INTEGER", "nullable": true},
+        "ascentM": {"type": "INTEGER", "nullable": true}
+      },
+      "required": ["cadence", "maxCadence", "strideM", "verticalRatioPct", "verticalOscCm", "contactMs", "powerW", "maxPowerW", "ascentM"]
+    },
+    "tecnica": {"type": "STRING"}
+  },
+  "required": ["metrics", "tecnica"]
 }
 """
 

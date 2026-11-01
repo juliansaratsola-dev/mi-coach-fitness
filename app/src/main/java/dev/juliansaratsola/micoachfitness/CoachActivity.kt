@@ -9,12 +9,12 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.MediaStore
 import android.view.Gravity
 import android.view.View
 import android.text.InputType
 import android.widget.Button
 import android.widget.EditText
-import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.ScrollView
@@ -41,11 +41,13 @@ class CoachActivity : Activity() {
     private lateinit var loadingContainer: LinearLayout
     private lateinit var loadingText: TextView
     private lateinit var reviewContainer: LinearLayout
+    private lateinit var historyButton: Button
     private lateinit var chatMessagesContainer: LinearLayout
     private lateinit var chatInput: EditText
     private lateinit var chatSendButton: Button
     private lateinit var pageScroll: ScrollView
     private var conversation = emptyList<CoachChatMessage>()
+    private var currentHistory = emptyList<WorkoutRecord>()
     private var pendingChatMessage: String? = null
     private var busy = false
     private var chatBusy = false
@@ -150,8 +152,7 @@ class CoachActivity : Activity() {
         root.addView(Button(this).apply {
             text = getString(R.string.coach_clear)
             setOnClickListener {
-                prefs.clearPendingCaptures()
-                refresh()
+                confirmClearCaptures()
             }
         })
         reviewContainer = LinearLayout(this).apply {
@@ -159,6 +160,11 @@ class CoachActivity : Activity() {
             setPadding(0, dp(16), 0, 0)
         }
         root.addView(reviewContainer)
+        historyButton = Button(this).apply {
+            visibility = View.GONE
+            setOnClickListener { showHistoryManager() }
+        }
+        root.addView(historyButton)
         root.addView(text(getString(R.string.coach_chat_title), 22f, bold = true, color = getColor(R.color.seed)).apply {
             setPadding(0, dp(32), 0, dp(8))
         })
@@ -193,24 +199,36 @@ class CoachActivity : Activity() {
             }
         }
         BottomNav.attach(this, pageScroll, BottomNav.Tab.COACH)
+        pendingText.setOnClickListener { showCaptureManager() }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::pendingText.isInitialized) refresh()
     }
 
     private fun refresh() {
         val count = prefs.pendingCaptures().size
-        pendingText.text = getString(R.string.coach_pending, count)
-        generateButton.isEnabled = count > 0 && !busy
-        healthButton.isEnabled = !busy
+        pendingText.text = if (count > 0) getString(R.string.coach_pending, count) else getString(R.string.coach_pending_empty)
+        pendingText.isClickable = count > 0
+        generateButton.isEnabled = count > 0 && !busy && !chatBusy
+        healthButton.isEnabled = !busy && !chatBusy
         if (!busy) {
             reviewContainer.removeAllViews()
             try {
-                val history = store.all()
-                if (history.isNotEmpty()) {
-                    renderRecord(history.last(), history.dropLast(1).size)
-                    renderHistory(history)
+                currentHistory = store.all()
+                historyButton.visibility = if (currentHistory.isEmpty()) View.GONE else View.VISIBLE
+                historyButton.text = getString(R.string.coach_history_count, currentHistory.size)
+                if (currentHistory.isNotEmpty()) {
+                    renderRecord(currentHistory.last(), currentHistory.dropLast(1).size)
                 }
             } catch (error: IOException) {
+                currentHistory = emptyList()
+                historyButton.visibility = View.GONE
                 Toast.makeText(this, R.string.coach_history_error, Toast.LENGTH_LONG).show()
             } catch (error: JSONException) {
+                currentHistory = emptyList()
+                historyButton.visibility = View.GONE
                 Toast.makeText(this, R.string.coach_history_error, Toast.LENGTH_LONG).show()
             }
         }
@@ -280,7 +298,7 @@ class CoachActivity : Activity() {
         Thread {
             val sessions = runCatching { HealthConnectReader(applicationContext).recentSessions() }.getOrDefault(emptyList())
             runOnUiThread {
-                healthButton.isEnabled = !busy
+                healthButton.isEnabled = !busy && !chatBusy
                 if (isDestroyed) return@runOnUiThread
                 if (sessions.isEmpty()) {
                     Toast.makeText(this, R.string.hc_none, Toast.LENGTH_LONG).show()
@@ -471,6 +489,8 @@ class CoachActivity : Activity() {
 
     private fun updateChatControls() {
         if (!::chatSendButton.isInitialized || !::chatInput.isInitialized) return
+        generateButton.isEnabled = prefs.pendingCaptures().isNotEmpty() && !busy && !chatBusy
+        healthButton.isEnabled = !busy && !chatBusy
         chatSendButton.isEnabled = !busy && !chatBusy
         chatInput.isEnabled = !busy && !chatBusy
         chatSendButton.text = getString(if (chatBusy) R.string.coach_chat_sending else R.string.coach_chat_send)
@@ -512,7 +532,11 @@ class CoachActivity : Activity() {
             R.string.review_cardio to review.cardioYEsfuerzo,
             R.string.review_comparison to review.comparativaMeritocratica,
             R.string.review_consistency to review.potenciaYConsistencia,
-            R.string.review_technique to review.tecnica
+            R.string.review_technique to (if (record.technicalMetricsWarning) {
+                getString(R.string.coach_technical_read_warning)
+            } else {
+                review.tecnica
+            })
         ).filter { it.second.isNotBlank() }.forEach { (title, body) ->
             reviewContainer.addView(
                 reviewCard(getString(title), body, titleColor = getColor(R.color.ink_muted)),
@@ -581,43 +605,148 @@ class CoachActivity : Activity() {
         }
     }
 
-    private fun renderHistory(history: List<WorkoutRecord>) {
-        reviewContainer.addView(text(getString(R.string.coach_history), 17f, bold = true).apply {
-            setPadding(0, dp(32), 0, dp(4))
-        })
-        history.asReversed().forEach { reviewContainer.addView(historyRow(it)) }
+    private fun showHistoryManager() {
+        val history = currentHistory
+        if (history.isEmpty()) {
+            Toast.makeText(this, R.string.coach_history_empty, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val indices = history.indices.reversed().toList()
+        val labels = indices.map { index ->
+            val record = history[index]
+            val points = NumberFormat.getIntegerInstance().format(record.puntosEsfuerzo)
+            "${record.headerText()} · ${getString(R.string.history_points, points)}"
+        }.toTypedArray()
+        android.app.AlertDialog.Builder(this)
+            .setTitle(R.string.coach_history)
+            .setItems(labels) { _, selected -> showHistoryDetails(indices[selected], history[indices[selected]]) }
+            .setNegativeButton(R.string.coach_close, null)
+            .show()
     }
 
-    /** Date and type, the effort points (with a flame on trench days) and the secondary details; no grades. */
-    private fun historyRow(record: WorkoutRecord): View {
-        val trench = record.esDiaTrinchera
-        val tint = getColor(if (trench) R.color.trench_dark else R.color.seed)
-        val top = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
+    private fun showHistoryDetails(index: Int, record: WorkoutRecord) {
+        val details = buildString {
+            append(record.detailParts().joinToString(" · "))
+            append("\n").append(getString(R.string.effort_points_label)).append(": ").append(record.puntosEsfuerzo)
+            if (record.esDiaTrinchera) append(" · ").append(getString(R.string.legend_trench))
+            record.metricGroups().forEach { (title, items) ->
+                append("\n\n").append(title).append('\n')
+                items.forEach { append(it.first).append(": ").append(it.second).append('\n') }
+            }
+            if (record.hasLegacyReview()) {
+                if (record.headline.isNotBlank()) append("\n\n").append(record.headline)
+                record.sections.forEach {
+                    append("\n\n").append(it.title).append(" ").append(it.score).append("/10\n").append(it.review)
+                }
+                listOf(
+                    "Técnica" to record.tecnica,
+                    "Cardio" to record.cardio,
+                    "Potencia y rendimiento" to record.potenciaRendimiento,
+                    "Comparativa" to record.comparativaPoblacional,
+                    "Comparativa personal" to record.comparison
+                ).filter { it.second.isNotBlank() }.forEach { (title, body) ->
+                    append("\n\n").append(title).append('\n').append(body)
+                }
+                record.suggestions.forEach { append("\n\nSugerencia\n").append(it) }
+                record.followUpQuestions.forEach { append("\n\nSeguimiento\n").append(it) }
+            } else {
+                val review = record.verdadPura
+                listOf(
+                    getString(R.string.review_verdict) to review.veredictoTrinchera,
+                    getString(R.string.review_cardio) to review.cardioYEsfuerzo,
+                    getString(R.string.review_comparison) to review.comparativaMeritocratica,
+                    getString(R.string.review_consistency) to review.potenciaYConsistencia,
+                    getString(R.string.review_technique) to (if (record.technicalMetricsWarning) {
+                        getString(R.string.coach_technical_read_warning)
+                    } else {
+                        review.tecnica
+                    })
+                ).filter { it.second.isNotBlank() }.forEach { (title, body) ->
+                    append("\n\n").append(title).append('\n').append(body)
+                }
+            }
+            record.feelingsForPrompt()?.let { append("\n\n").append(getString(R.string.coach_notes_hint)).append(": ").append(it) }
         }
-        top.addView(text(record.headerText(), 14f), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        if (trench) {
-            top.addView(ImageView(this).apply {
-                setImageResource(R.drawable.ic_fire)
-                setColorFilter(tint)
-                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-            }, LinearLayout.LayoutParams(dp(14), dp(14)))
-            top.addView(text(getString(R.string.legend_trench), 12f, bold = true, color = tint).apply {
-                setPadding(dp(2), 0, dp(10), 0)
-            })
+        android.app.AlertDialog.Builder(this)
+            .setTitle(record.headerText())
+            .setMessage(details.trim())
+            .setPositiveButton(R.string.coach_close, null)
+            .setNegativeButton(R.string.coach_history_delete) { _, _ ->
+                confirmDeleteHistoryRecord(index)
+            }
+            .show()
+    }
+
+    private fun confirmDeleteHistoryRecord(index: Int) {
+        android.app.AlertDialog.Builder(this)
+            .setTitle(R.string.coach_history_delete_confirm_title)
+            .setMessage(R.string.coach_history_delete_confirm)
+            .setNegativeButton(R.string.coach_close, null)
+            .setPositiveButton(R.string.coach_history_delete) { _, _ ->
+                try {
+                    store.deleteAt(index)
+                    refresh()
+                } catch (error: IOException) {
+                    Toast.makeText(this, R.string.coach_history_error, Toast.LENGTH_LONG).show()
+                } catch (error: JSONException) {
+                    Toast.makeText(this, R.string.coach_history_error, Toast.LENGTH_LONG).show()
+                }
+            }
+            .show()
+    }
+
+    private fun showCaptureManager() {
+        val captures = prefs.pendingCaptures()
+        if (captures.isEmpty()) {
+            Toast.makeText(this, R.string.coach_capture_empty, Toast.LENGTH_SHORT).show()
+            return
         }
-        val points = NumberFormat.getIntegerInstance().format(record.puntosEsfuerzo)
-        top.addView(text(getString(R.string.history_points, points), 15f, bold = true, color = tint))
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(0, dp(8), 0, dp(8))
-            isScreenReaderFocusable = true
+        val labels = captures.mapIndexed { index, value -> captureLabel(index, value) }.toTypedArray()
+        android.app.AlertDialog.Builder(this)
+            .setTitle(getString(R.string.coach_capture_manager, captures.size))
+            .setItems(labels) { _, selected ->
+                android.app.AlertDialog.Builder(this)
+                    .setMessage(R.string.coach_capture_remove_confirm)
+                    .setNegativeButton(R.string.coach_close, null)
+                    .setPositiveButton(R.string.coach_capture_remove) { _, _ ->
+                        prefs.removePendingCapture(captures[selected])
+                        refresh()
+                    }
+                    .show()
+            }
+            .setNegativeButton(R.string.coach_close, null)
+            .show()
+    }
+
+    private fun captureLabel(index: Int, value: String): String {
+        val uri = Uri.parse(value)
+        val name = try {
+            contentResolver.query(uri, arrayOf(MediaStore.Images.Media.DISPLAY_NAME), null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val column = cursor.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME)
+                    if (column >= 0 && !cursor.isNull(column)) cursor.getString(column) else null
+                } else {
+                    null
+                }
+            }
+        } catch (_: IllegalArgumentException) {
+            null
+        } catch (_: SecurityException) {
+            null
         }
-        row.addView(top)
-        val details = record.detailParts().joinToString(" · ")
-        if (details.isNotEmpty()) row.addView(text(details, 13f, color = getColor(R.color.ink_muted)))
-        return row
+        return name ?: getString(R.string.coach_capture_unknown, index + 1)
+    }
+
+    private fun confirmClearCaptures() {
+        if (prefs.pendingCaptures().isEmpty()) return
+        android.app.AlertDialog.Builder(this)
+            .setMessage(R.string.coach_capture_clear_confirm)
+            .setNegativeButton(R.string.coach_close, null)
+            .setPositiveButton(R.string.coach_clear) { _, _ ->
+                prefs.clearPendingCaptures()
+                refresh()
+            }
+            .show()
     }
 
     private fun renderMetrics(record: WorkoutRecord) {
