@@ -68,7 +68,8 @@ data class WorkoutRecord(
     val activeKcal: Int? = null,
     val avgSpeedKmh: Double? = null,
     val minSpeedKmh: Double? = null,
-    val maxSpeedKmh: Double? = null
+    val maxSpeedKmh: Double? = null,
+    val bodyWeightKg: Double? = null
 ) {
     fun paceText(): String = formatPace(paceSecPerKm)
 
@@ -99,10 +100,18 @@ data class WorkoutRecord(
     fun hasLegacyReview(): Boolean = verdadPura.isEmpty && (headline.isNotBlank() || sections.isNotEmpty())
 
     /** Metrics grouped for display; groups and values without data are left out. */
-    fun metricGroups(): List<Pair<String, List<Pair<String, String>>>> {
+    fun metricGroups(includePowerPerKg: Boolean = false): List<Pair<String, List<Pair<String, String>>>> {
         val us = java.util.Locale.US
         fun group(title: String, vararg items: Pair<String, String?>) =
             title to items.mapNotNull { (label, value) -> value?.let { label to it } }
+        val relativePower = if (includePowerPerKg && bodyWeightKg != null && bodyWeightKg > 0.0) {
+            listOfNotNull(
+                powerW?.let { "Potencia media (W/kg)" to "%.2f W/kg".format(us, it / bodyWeightKg) },
+                maxPowerW?.let { "Potencia máxima (W/kg)" to "%.2f W/kg".format(us, it / bodyWeightKg) }
+            )
+        } else {
+            emptyList()
+        }
         return listOf(
             group(
                 "Rendimiento",
@@ -120,11 +129,10 @@ data class WorkoutRecord(
                 "TE aeróbico" to aerobicTe?.let { "%.1f".format(us, it) },
                 "TE anaeróbico" to anaerobicTe?.let { "%.1f".format(us, it) }
             ),
-            group(
-                "Potencia",
-                "Potencia media" to powerW?.let { "$it W" },
-                "Potencia máxima" to maxPowerW?.let { "$it W" }
-            ),
+            "Potencia" to listOfNotNull(
+                powerW?.let { "Potencia media" to "$it W" },
+                maxPowerW?.let { "Potencia máxima" to "$it W" }
+            ) + relativePower,
             group(
                 "Velocidad",
                 "Velocidad media" to avgSpeedKmh?.let { "%.1f km/h".format(us, it) },
@@ -199,6 +207,8 @@ data class WorkoutRecord(
 
     companion object {
         private const val MAX_PROMPT_FEELINGS = 200
+        const val MIN_BODY_WEIGHT_KG = 20.0
+        const val MAX_BODY_WEIGHT_KG = 300.0
 
         /** Parses a yyyy-MM-dd date; null when the text is not a valid ISO date. */
         fun parseDate(text: String?): LocalDate? = try {

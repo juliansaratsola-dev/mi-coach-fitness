@@ -130,6 +130,21 @@ class CoachPromptTest {
     }
 
     @Test
+    fun focusedTechnicalReadIsRequestedForAnyMissingTargetMetric() {
+        val partial = JSONObject(
+            """{"metrics":{"cadence":180,"maxCadence":190,"strideM":1.0,"verticalRatioPct":8.0,"verticalOscCm":8.0,"contactMs":250,"powerW":null,"maxPowerW":null,"ascentM":10}}"""
+        )
+        val complete = JSONObject(
+            """{"metrics":{"cadence":180,"maxCadence":190,"strideM":1.0,"verticalRatioPct":8.0,"verticalOscCm":8.0,"contactMs":250,"powerW":270,"maxPowerW":350,"ascentM":10}}"""
+        )
+
+        assertTrue(WorkoutJson.shouldSupplementTechnicalMetrics(partial))
+        assertFalse(WorkoutJson.shouldSupplementTechnicalMetrics(complete))
+        complete.put("tecnica", "No hay datos de dinámica.")
+        assertTrue(WorkoutJson.shouldSupplementTechnicalMetrics(complete))
+    }
+
+    @Test
     fun technicalSupplementRetriesWhenNarrativeDeniesAlreadyExtractedMetrics() {
         val review = JSONObject(
             """{"metrics":{"cadence":180,"strideM":0.99,"contactMs":250,"verticalOscCm":8.2,"verticalRatioPct":8.2},"tecnica":"No hay datos de dinámicas de carrera disponibles en la captura. Imposible evaluar cadencia o zancada."}"""

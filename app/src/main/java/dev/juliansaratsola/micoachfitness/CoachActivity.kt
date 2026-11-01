@@ -726,7 +726,7 @@ class CoachActivity : Activity() {
     }
 
     private fun renderMetrics(record: WorkoutRecord) {
-        val groups = record.metricGroups()
+        val groups = record.metricGroups(includePowerPerKg = true)
         if (groups.isEmpty()) return
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL

@@ -71,7 +71,7 @@
     <string name="coach_capture_remove_confirm">¿Quitar esta captura de la próxima review?</string>
     <string name="coach_capture_clear_confirm">¿Vaciar todas las capturas pendientes?</string>
     <string name="coach_capture_unknown">Captura %1$d</string>
-    <string name="coach_technical_read_warning">No pude leer suficientes métricas de dinámica en estas capturas. Revisa que la captura de «Dinámica de carrera» esté agregada y vuelve a generar el review.</string>
+    <string name="coach_technical_read_warning">No pude leer suficientes métricas de dinámica. Agrega también la captura de Garmin donde se ve «Dinámica de carrera», con los valores completos visibles; no se estiman datos que no aparezcan.</string>
     <string name="coach_chat_title">Chat con tu coach</string>
     <string name="coach_chat_hint">Escribe un mensaje…</string>
     <string name="coach_chat_send">Enviar</string>
@@ -85,7 +85,7 @@
     <string name="gemini_key_hint">API key de Gemini</string>
     <string name="save_key">Guardar API key</string>
     <string name="key_saved">API key guardada.</string>
-    <string name="coach_privacy_notice">Para generar un review, se envían a Google Gemini las capturas elegidas, tus sensaciones, tu Form Score y un resumen de tus últimos 5 entrenamientos guardados. En el chat se envían tus mensajes recientes, tu Form Score, un resumen de hasta 8 entrenamientos y tu review más reciente. El historial, la conversación y la API key se guardan en este dispositivo. La edad, si la indicas, solo se usa en el teléfono para calcular el esfuerzo.</string>
+    <string name="coach_privacy_notice">Para generar un review, se envían a Google Gemini las capturas elegidas, tus sensaciones, tu Form Score y un resumen de tus últimos 5 entrenamientos guardados. En el chat se envían tus mensajes recientes, tu Form Score, un resumen de hasta 8 entrenamientos y tu review más reciente. El historial, la conversación y la API key se guardan en este dispositivo. La edad se usa solo en el teléfono para calcular el esfuerzo; el peso también se queda en el teléfono y solo se usa para calcular W/kg.</string>
     <string name="coach_notes_help">Si cuentas que fue duro (pesado, cansancio, dolor, calor, lluvia…) y el esfuerzo fue alto, el entreno cuenta como Día de Trinchera: ×%1$s.</string>
 
     <!-- Esfuerzo relativo -->
@@ -131,19 +131,25 @@
     <string name="review_technique">Técnica</string>
     <string name="review_details">Datos detectados</string>
 
-    <!-- Ajustes: edad para estimar la FC máxima -->
+    <!-- Ajustes: edad y peso del perfil -->
     <string name="age_hint">Tu edad (opcional)</string>
     <string name="age_help">Sirve para estimar tu frecuencia cardíaca máxima (220 − edad) y medir tu esfuerzo. Sin edad se usan %1$d ppm. Los entrenos que ya tienen puntos guardados no cambian.</string>
     <string name="save_age">Guardar edad</string>
     <string name="age_saved">Edad guardada.</string>
     <string name="age_cleared">Edad borrada: se usarán %1$d ppm como frecuencia cardíaca máxima.</string>
     <string name="age_invalid">Escribe una edad entre %1$d y %2$d años.</string>
+    <string name="weight_hint">Tu peso en kg (opcional)</string>
+    <string name="weight_help">Se usa solo en este teléfono para calcular los vatios por kilo de las sesiones con potencia registrada.</string>
+    <string name="save_weight">Guardar peso</string>
+    <string name="weight_saved">Peso guardado.</string>
+    <string name="weight_cleared">Peso borrado.</string>
+    <string name="weight_invalid">Escribe un peso entre %1$d y %2$d kg.</string>
     <string name="history_title">Historial de entrenamientos</string>
     <string name="history_intro">Tus reviews guardados, del más reciente al más antiguo.</string>
     <string name="history_empty">Todavía no hay entrenamientos guardados. Genera un review en Coach para empezar tu historial.</string>
     <string name="reset_app_action">Restablecer datos de la app</string>
     <string name="reset_app_title">¿Restablecer Mi Coach Fitness?</string>
-    <string name="reset_app_message">Se eliminarán el historial de entrenamientos, la conversación del Coach, las capturas pendientes, la API key, la edad y las preferencias de monitoreo. El monitoreo se detendrá. Esta acción no se puede deshacer. Los permisos concedidos en Android y Health Connect no se revocarán.</string>
+    <string name="reset_app_message">Se eliminarán el historial de entrenamientos, la conversación del Coach, las capturas pendientes, la API key, la edad, el peso y las preferencias de monitoreo. El monitoreo se detendrá. Esta acción no se puede deshacer. Los permisos concedidos en Android y Health Connect no se revocarán.</string>
     <string name="reset_app_done">Datos locales restablecidos. Los permisos de Android siguen concedidos.</string>
     <string name="reset_app_failed">No se pudo confirmar el restablecimiento local. Vuelve a intentarlo y comprueba el espacio de almacenamiento.</string>
     <string name="coach_reset_interrupted">Los datos se restablecieron durante el análisis; el resultado no se guardó.</string>

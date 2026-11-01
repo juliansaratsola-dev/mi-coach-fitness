@@ -17,8 +17,9 @@ class WorkoutStore(context: Context) {
     fun all(): List<WorkoutRecord> {
         val array = readArray()
         val age = prefs.userAge
+        val weightKg = prefs.userWeightKg
         return (0 until array.length()).mapNotNull { index ->
-            array.optJSONObject(index)?.let { WorkoutJson.parse(it, age) }
+            array.optJSONObject(index)?.let { WorkoutJson.parse(it, age, weightKg) }
         }
     }
 
@@ -36,9 +37,10 @@ class WorkoutStore(context: Context) {
     @Synchronized
     fun add(raw: JSONObject, fallbackDate: String, notes: String? = null): WorkoutRecord {
         val age = prefs.userAge
+        val weightKg = prefs.userWeightKg
         WorkoutJson.normalizeDate(raw, fallbackDate)
         WorkoutJson.applyEffort(raw, notes, age)
-        val record = WorkoutJson.parse(raw, age)
+        val record = WorkoutJson.parse(raw, age, weightKg)
         val array = readArray()
         array.put(raw)
         writeArray(array)

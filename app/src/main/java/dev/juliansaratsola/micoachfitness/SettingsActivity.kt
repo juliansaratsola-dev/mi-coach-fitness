@@ -45,8 +45,11 @@ class SettingsActivity : Activity() {
         content.findViewById<TextView>(R.id.ageHelp).text =
             getString(R.string.age_help, EffortCalculator.DEFAULT_MAX_HR.toInt())
         content.findViewById<Button>(R.id.saveAgeButton).setOnClickListener { saveAge(ageInput) }
+        val weightInput = content.findViewById<EditText>(R.id.weightInput)
+        weightInput.setText(prefs.userWeightKg?.let { "%.1f".format(java.util.Locale.US, it) }.orEmpty())
+        content.findViewById<Button>(R.id.saveWeightButton).setOnClickListener { saveWeight(weightInput) }
         content.findViewById<Button>(R.id.resetAppButton).setOnClickListener {
-            confirmReset(keyInput, ageInput)
+            confirmReset(keyInput, ageInput, weightInput)
         }
     }
 
@@ -69,7 +72,34 @@ class SettingsActivity : Activity() {
         Toast.makeText(this, R.string.age_saved, Toast.LENGTH_SHORT).show()
     }
 
-    private fun confirmReset(keyInput: EditText, ageInput: EditText) {
+    /** A blank field clears the weight; otherwise accept kilograms in the supported profile range. */
+    private fun saveWeight(input: EditText) {
+        val typed = input.text.toString().trim().replace(',', '.')
+        if (typed.isEmpty()) {
+            prefs.userWeightKg = null
+            Toast.makeText(this, R.string.weight_cleared, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val weight = typed.toDoubleOrNull()?.takeIf {
+            it.isFinite() && it in WorkoutRecord.MIN_BODY_WEIGHT_KG..WorkoutRecord.MAX_BODY_WEIGHT_KG
+        }
+        if (weight == null) {
+            Toast.makeText(
+                this,
+                getString(
+                    R.string.weight_invalid,
+                    WorkoutRecord.MIN_BODY_WEIGHT_KG.toInt(),
+                    WorkoutRecord.MAX_BODY_WEIGHT_KG.toInt()
+                ),
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+        prefs.userWeightKg = weight
+        Toast.makeText(this, R.string.weight_saved, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun confirmReset(keyInput: EditText, ageInput: EditText, weightInput: EditText) {
         AlertDialog.Builder(this)
             .setTitle(R.string.reset_app_title)
             .setMessage(R.string.reset_app_message)
@@ -85,6 +115,7 @@ class SettingsActivity : Activity() {
                 }
                 keyInput.text.clear()
                 ageInput.text.clear()
+                weightInput.text.clear()
                 Toast.makeText(
                     this,
                     if (resetSucceeded) R.string.reset_app_done else R.string.reset_app_failed,

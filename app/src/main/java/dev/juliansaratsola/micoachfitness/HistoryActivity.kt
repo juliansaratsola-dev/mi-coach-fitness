@@ -92,7 +92,7 @@ class HistoryActivity : Activity() {
             append(record.detailParts().joinToString(" · "))
             append("\n").append(getString(R.string.effort_points_label)).append(": ").append(record.puntosEsfuerzo)
             if (record.esDiaTrinchera) append(" · ").append(getString(R.string.legend_trench))
-            record.metricGroups().forEach { (title, items) ->
+            record.metricGroups(includePowerPerKg = true).forEach { (title, items) ->
                 append("\n\n").append(title).append('\n')
                 items.forEach { append(it.first).append(": ").append(it.second).append('\n') }
             }

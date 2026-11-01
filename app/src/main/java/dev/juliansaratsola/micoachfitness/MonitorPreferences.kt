@@ -53,6 +53,21 @@ class MonitorPreferences(context: Context) {
             editor.apply()
         }
 
+    /** Optional body weight in kilograms, used only for local W/kg calculations. */
+    var userWeightKg: Double?
+        get() = prefs.getFloat(KEY_WEIGHT_KG, 0f).toDouble().takeIf {
+            it.isFinite() && it in WorkoutRecord.MIN_BODY_WEIGHT_KG..WorkoutRecord.MAX_BODY_WEIGHT_KG
+        }
+        set(value) {
+            val editor = prefs.edit()
+            if (value == null || !value.isFinite() || value !in WorkoutRecord.MIN_BODY_WEIGHT_KG..WorkoutRecord.MAX_BODY_WEIGHT_KG) {
+                editor.remove(KEY_WEIGHT_KG)
+            } else {
+                editor.putFloat(KEY_WEIGHT_KG, value.toFloat())
+            }
+            editor.apply()
+        }
+
     fun pendingCaptures(): List<String> =
         prefs.getString(KEY_PENDING, null)?.split('\n')?.filter { it.isNotBlank() } ?: emptyList()
 
@@ -107,6 +122,7 @@ class MonitorPreferences(context: Context) {
         private const val KEY_HC_OPT = "hc_optional_asked"
         private const val KEY_HC_WATCH = "hc_watch"
         private const val KEY_AGE = "user_age"
+        private const val KEY_WEIGHT_KG = "user_weight_kg"
         private const val KEY_PENDING = "pending_captures"
         private const val KEY_RESET_VERSION = "local_reset_version"
         private const val MAX_HANDLED = 50
