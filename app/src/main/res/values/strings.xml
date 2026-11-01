@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Mi Coach Fitness</string>
-    <string name="monitor_description">Detecta capturas de pantalla mientras usas Garmin Connect y te deja enviarlas al Coach: un review con notas del 1 al 10 que compara con tu historial.</string>
+    <string name="monitor_description">Detecta capturas de pantalla mientras usas Garmin Connect y te deja enviarlas al Coach: un review crudo que mide tu esfuerzo, no tu ritmo, y lo compara con tu historial.</string>
     <string name="monitor_switch">Monitoreo activo</string>
     <string name="status_running">Servicio en ejecución</string>
     <string name="status_stopped">Servicio detenido</string>
@@ -46,7 +46,7 @@
     <string name="setup_welcome">¡Bienvenido! Primero configura la app: concede los permisos, el acceso de uso y guarda tu API key de Gemini. Después vuelve a Inicio y activa el monitoreo.</string>
     <string name="hc_choose">¿Qué entrenamiento analizar?</string>
     <string name="coach_pending">Capturas listas para analizar: %1$d</string>
-    <string name="coach_notes_hint">Sensaciones (opcional): tibias, gemelos, ánimo…</string>
+    <string name="coach_notes_hint">Sensaciones (opcional): piernas pesadas, calor, lluvia, dolor…</string>
     <string name="coach_generate">Generar review</string>
     <string name="coach_generating">Analizando…</string>
     <string name="coach_loading_cadence">Analizando tu cadencia…</string>
@@ -73,5 +73,57 @@
     <string name="gemini_key_hint">API key de Gemini</string>
     <string name="save_key">Guardar API key</string>
     <string name="key_saved">API key guardada.</string>
-    <string name="coach_privacy_notice">Para generar un review, se envían a Google Gemini las capturas elegidas, tus sensaciones y hasta 5 entrenamientos guardados. En el chat se envían tus mensajes recientes y el JSON del último review. El historial, la conversación y la API key se guardan en este dispositivo.</string>
+    <string name="coach_privacy_notice">Para generar un review, se envían a Google Gemini las capturas elegidas, tus sensaciones, tu Form Score y un resumen de tus últimos 5 entrenamientos guardados. En el chat se envían tus mensajes recientes, tu Form Score, un resumen de hasta 8 entrenamientos y tu review más reciente. El historial, la conversación y la API key se guardan en este dispositivo. La edad, si la indicas, solo se usa en el teléfono para calcular el esfuerzo.</string>
+    <string name="coach_notes_help">Si cuentas que fue duro (pesado, cansancio, dolor, calor, lluvia…) y el esfuerzo fue alto, el entreno cuenta como Día de Trinchera: ×%1$s.</string>
+
+    <!-- Esfuerzo relativo -->
+    <string name="effort_points_label">Puntos de esfuerzo</string>
+    <string name="effort_trench_badge">Día de trinchera ×%1$s</string>
+    <string name="effort_note_no_hr">Estimado: sin frecuencia cardíaca se usó un esfuerzo estándar.</string>
+    <string name="effort_note_no_duration">Estimado: sin duración se asumieron %1$d min.</string>
+    <string name="effort_note_no_data">Estimado: sin frecuencia cardíaca ni duración se usó un esfuerzo estándar.</string>
+    <string name="effort_feelings_quote">“%1$s”</string>
+    <string name="history_points">%1$s pts</string>
+
+    <!-- Inicio: nivel, consistencia y último entreno -->
+    <string name="form_level_prefix">Niv.</string>
+    <string name="form_level_description">Nivel %1$d</string>
+    <string name="form_score_value">Form Score: %1$s</string>
+    <string name="form_next_level">Faltan %1$s pts para el nivel %2$d</string>
+    <string name="form_gravity_none">Sin entrenos registrados: tu Form Score arranca con el primer review.</string>
+    <string name="form_gravity_today">Entrenaste hoy: sin gravedad.</string>
+    <string name="form_gravity_yesterday">Último entreno ayer: la gravedad divide tu Form Score entre 2.</string>
+    <string name="form_gravity_days">Último entreno hace %1$d días: la gravedad divide tu Form Score entre %2$d.</string>
+    <string name="chart_title">Consistencia · 30 días</string>
+    <string name="chart_today">hoy</string>
+    <string name="chart_empty">Sin entrenos en los últimos 30 días. Cada día entrenado aparecerá como una barra.</string>
+    <string name="chart_summary_points">%1$s pts</string>
+    <string name="chart_summary_trench">%1$d de trinchera</string>
+    <plurals name="chart_trained_days">
+        <item quantity="one">%1$d día entrenado</item>
+        <item quantity="many">%1$d días entrenados</item>
+        <item quantity="other">%1$d días entrenados</item>
+    </plurals>
+    <string name="chart_description">Últimos 30 días. Días entrenados: %1$d. Días de trinchera: %2$d. Puntos de esfuerzo: %3$d.</string>
+    <string name="legend_trained">Entrenado</string>
+    <string name="legend_trench">Trinchera</string>
+    <string name="legend_rest">Descanso</string>
+    <string name="home_last_workout">Último entreno</string>
+    <string name="home_last_workout_empty">Todavía no hay entrenos guardados. Genera tu primer review en Coach: aquí verás tus puntos de esfuerzo, no tu ritmo.</string>
+
+    <!-- Review de Verdad Pura -->
+    <string name="review_verdict">Veredicto de trinchera</string>
+    <string name="review_cardio">Cardio y esfuerzo</string>
+    <string name="review_comparison">Comparativa meritocrática</string>
+    <string name="review_consistency">Potencia y consistencia</string>
+    <string name="review_technique">Técnica</string>
+    <string name="review_details">Datos detectados</string>
+
+    <!-- Ajustes: edad para estimar la FC máxima -->
+    <string name="age_hint">Tu edad (opcional)</string>
+    <string name="age_help">Sirve para estimar tu frecuencia cardíaca máxima (220 − edad) y medir tu esfuerzo. Sin edad se usan %1$d ppm. Los entrenos que ya tienen puntos guardados no cambian.</string>
+    <string name="save_age">Guardar edad</string>
+    <string name="age_saved">Edad guardada.</string>
+    <string name="age_cleared">Edad borrada: se usarán %1$d ppm como frecuencia cardíaca máxima.</string>
+    <string name="age_invalid">Escribe una edad entre %1$d y %2$d años.</string>
 </resources>

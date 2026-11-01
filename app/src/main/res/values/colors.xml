@@ -1,5 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="seed">#1B6B4A</color>
+    <color name="seed_dark">#134D35</color>
     <color name="ic_launcher_background">#1B6B4A</color>
+
+    <!-- Cream surfaces and ink -->
+    <color name="cream">#FAF6EA</color>
+    <color name="cream_card">#FFFDF6</color>
+    <color name="cream_line">#E6DEC4</color>
+    <color name="ink">#1D2B24</color>
+    <color name="ink_muted">#5F6B63</color>
+
+    <!-- Trench days (effort under adverse conditions) and chart tracks -->
+    <color name="trench">#E2700F</color>
+    <color name="trench_dark">#A94B00</color>
+    <color name="trench_bg">#FFF0DC</color>
+    <color name="bar_rest">#EDE6D0</color>
+
+    <!-- Chat: the user's bubbles are tinted green, the coach's use the card surface -->
+    <color name="bubble_user">#DCEBDD</color>
 </resources>

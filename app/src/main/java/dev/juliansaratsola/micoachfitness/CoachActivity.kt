@@ -14,6 +14,7 @@ import android.view.View
 import android.text.InputType
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.ScrollView
@@ -21,6 +22,7 @@ import android.widget.TextView
 import android.widget.Toast
 import org.json.JSONException
 import java.io.IOException
+import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -105,8 +107,6 @@ class CoachActivity : Activity() {
     }
 
     private fun buildUi() {
-        val density = resources.displayMetrics.density
-        fun dp(value: Int) = (value * density).toInt()
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(20), dp(24), dp(20), dp(24))
@@ -122,6 +122,10 @@ class CoachActivity : Activity() {
             gravity = Gravity.TOP
         }
         root.addView(notesInput)
+        val multiplier = String.format(Locale.getDefault(), "%.1f", EffortCalculator.TRENCH_MULTIPLIER)
+        root.addView(text(getString(R.string.coach_notes_help, multiplier), 12f, color = getColor(R.color.ink_muted)).apply {
+            setPadding(0, 0, 0, dp(8))
+        })
         generateButton = Button(this).apply {
             text = getString(R.string.coach_generate)
             setOnClickListener { generate() }
@@ -328,15 +332,21 @@ class CoachActivity : Activity() {
                     val session = chosen ?: HealthConnectReader(applicationContext).latestSession()
                         ?: throw CoachException(getString(R.string.hc_none))
                     val sessionDate = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(session.startMillis))
-                    val raw = GeminiClient(applicationContext, key)
-                        .review(uris, store.all(), today, notes, "Fecha del entrenamiento: $sessionDate\n" + session.toPromptText())
+                    val raw = GeminiClient(applicationContext, key).review(
+                        uris,
+                        store.getHistoricalContextForAI(),
+                        today,
+                        notes,
+                        "Fecha del entrenamiento: $sessionDate\n" + session.toPromptText()
+                    )
                     raw.put("date", sessionDate)
-                    store.add(raw, sessionDate)
+                    store.add(raw, sessionDate, notes)
                     prefs.lastHealthSessionEnd = session.endMillis
                     prefs.clearPendingCaptures()
                 } else {
-                    val raw = GeminiClient(applicationContext, key).review(uris, store.all(), today, notes)
-                    store.add(raw, today)
+                    val raw = GeminiClient(applicationContext, key)
+                        .review(uris, store.getHistoricalContextForAI(), today, notes)
+                    store.add(raw, today, notes)
                 }
             }
             runOnUiThread {
@@ -412,9 +422,10 @@ class CoachActivity : Activity() {
                 setPadding(0, (4 * density).toInt(), 0, (4 * density).toInt())
             }
             val bubble = text(message.text, 15f).apply {
-                val color = if (message.role == CoachChatRole.USER) Color.rgb(232, 240, 254) else Color.rgb(242, 242, 242)
+                val fromUser = message.role == CoachChatRole.USER
                 background = GradientDrawable().apply {
-                    setColor(color)
+                    setColor(getColor(if (fromUser) R.color.bubble_user else R.color.cream_card))
+                    if (!fromUser) setStroke(dp(1), getColor(R.color.cream_line))
                     cornerRadius = 16 * density
                 }
                 setPadding((12 * density).toInt(), (10 * density).toInt(), (12 * density).toInt(), (10 * density).toInt())
@@ -465,11 +476,81 @@ class CoachActivity : Activity() {
         chatSendButton.text = getString(if (chatBusy) R.string.coach_chat_sending else R.string.coach_chat_send)
     }
 
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    /** Stacks a review block under the previous one. */
+    private fun blockParams(topDp: Int = 10) = LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+    ).apply { topMargin = dp(topDp) }
+
     private fun renderRecord(record: WorkoutRecord, previousCount: Int) {
-        val c = reviewContainer
-        c.addView(text("${record.date} · ${record.type}", 14f, color = Color.GRAY))
-        c.addView(text("${record.overallScore}/10  ${record.headline}", 22f, bold = true, color = scoreColor(record.overallScore)))
+        reviewContainer.addView(EffortCardView(this).apply { bind(record) }, blockParams(0))
+        if (record.hasLegacyReview()) {
+            renderLegacyReview(record, previousCount)
+        } else {
+            renderVerdadPuraReview(record)
+        }
         renderMetrics(record)
+    }
+
+    /** Effort first, speed last: the verdict and the effort reading come before consistency and technique. */
+    private fun renderVerdadPuraReview(record: WorkoutRecord) {
+        val review = record.verdadPura
+        if (review.veredictoTrinchera.isNotBlank()) {
+            val trench = record.esDiaTrinchera
+            reviewContainer.addView(
+                reviewCard(
+                    getString(R.string.review_verdict),
+                    review.veredictoTrinchera,
+                    titleColor = getColor(if (trench) R.color.trench_dark else R.color.seed),
+                    accent = getColor(if (trench) R.color.trench else R.color.seed)
+                ),
+                blockParams(16)
+            )
+        }
+        listOf(
+            R.string.review_cardio to review.cardioYEsfuerzo,
+            R.string.review_comparison to review.comparativaMeritocratica,
+            R.string.review_consistency to review.potenciaYConsistencia,
+            R.string.review_technique to review.tecnica
+        ).filter { it.second.isNotBlank() }.forEach { (title, body) ->
+            reviewContainer.addView(
+                reviewCard(getString(title), body, titleColor = getColor(R.color.ink_muted)),
+                blockParams()
+            )
+        }
+    }
+
+    /** One block of the review. The card that has an [accent] border is the prominent one (the verdict). */
+    private fun reviewCard(title: String, body: String, titleColor: Int, accent: Int? = null): LinearLayout {
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(14), dp(16), dp(16))
+            isScreenReaderFocusable = true
+            background = if (accent == null) {
+                getDrawable(R.drawable.bg_card)
+            } else {
+                GradientDrawable().apply {
+                    setColor(getColor(R.color.cream_card))
+                    cornerRadius = dp(16).toFloat()
+                    setStroke(dp(2), accent)
+                }
+            }
+        }
+        card.addView(text(title, 12f, bold = true, color = titleColor).apply {
+            isAllCaps = true
+            letterSpacing = 0.1f
+        })
+        card.addView(text(body, if (accent == null) 15f else 17f).apply { setPadding(0, dp(6), 0, 0) })
+        return card
+    }
+
+    /** Workouts reviewed before "Verdad Pura" keep the graded layout they were saved with. */
+    private fun renderLegacyReview(record: WorkoutRecord, previousCount: Int) {
+        val c = reviewContainer
+        c.addView(text("${record.overallScore}/10  ${record.headline}", 22f, bold = true, color = scoreColor(record.overallScore)).apply {
+            setPadding(0, dp(16), 0, 0)
+        })
         for (section in record.sections) {
             c.addView(text("${section.title}  ${section.score}/10", 17f, bold = true, color = scoreColor(section.score)).apply {
                 setPadding(0, 20, 0, 4)
@@ -502,29 +583,67 @@ class CoachActivity : Activity() {
 
     private fun renderHistory(history: List<WorkoutRecord>) {
         reviewContainer.addView(text(getString(R.string.coach_history), 17f, bold = true).apply {
-            setPadding(0, 32, 0, 4)
+            setPadding(0, dp(32), 0, dp(4))
         })
-        history.asReversed().forEach {
-            val line = "${it.date}  ${it.overallScore}/10  " +
-                "${it.distanceKm?.let { km -> "%.1f km".format(Locale.US, km) } ?: "-"}  " +
-                "${it.paceText()}/km  FC ${it.avgHr ?: "-"}"
-            reviewContainer.addView(text(line, 14f))
+        history.asReversed().forEach { reviewContainer.addView(historyRow(it)) }
+    }
+
+    /** Date and type, the effort points (with a flame on trench days) and the secondary details; no grades. */
+    private fun historyRow(record: WorkoutRecord): View {
+        val trench = record.esDiaTrinchera
+        val tint = getColor(if (trench) R.color.trench_dark else R.color.seed)
+        val top = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
         }
+        top.addView(text(record.headerText(), 14f), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        if (trench) {
+            top.addView(ImageView(this).apply {
+                setImageResource(R.drawable.ic_fire)
+                setColorFilter(tint)
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            }, LinearLayout.LayoutParams(dp(14), dp(14)))
+            top.addView(text(getString(R.string.legend_trench), 12f, bold = true, color = tint).apply {
+                setPadding(dp(2), 0, dp(10), 0)
+            })
+        }
+        val points = NumberFormat.getIntegerInstance().format(record.puntosEsfuerzo)
+        top.addView(text(getString(R.string.history_points, points), 15f, bold = true, color = tint))
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, dp(8), 0, dp(8))
+            isScreenReaderFocusable = true
+        }
+        row.addView(top)
+        val details = record.detailParts().joinToString(" · ")
+        if (details.isNotEmpty()) row.addView(text(details, 13f, color = getColor(R.color.ink_muted)))
+        return row
     }
 
     private fun renderMetrics(record: WorkoutRecord) {
-        val density = resources.displayMetrics.density
-        for ((title, items) in record.metricGroups()) {
-            reviewContainer.addView(text(title, 13f, bold = true, color = getColor(R.color.seed)).apply {
-                setPadding(0, (12 * density).toInt(), 0, (2 * density).toInt())
+        val groups = record.metricGroups()
+        if (groups.isEmpty()) return
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = getDrawable(R.drawable.bg_card)
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+        }
+        card.addView(text(getString(R.string.review_details), 12f, bold = true, color = getColor(R.color.ink_muted)).apply {
+            isAllCaps = true
+            letterSpacing = 0.1f
+        })
+        for ((title, items) in groups) {
+            card.addView(text(title, 13f, bold = true, color = getColor(R.color.seed)).apply {
+                setPadding(0, dp(12), 0, dp(2))
             })
             for ((label, value) in items) {
                 val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-                row.addView(text(label, 15f, color = Color.GRAY), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+                row.addView(text(label, 15f, color = getColor(R.color.ink_muted)), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
                 row.addView(text(value, 15f, bold = true))
-                reviewContainer.addView(row)
+                card.addView(row)
             }
         }
+        reviewContainer.addView(card, blockParams(16))
     }
 
     private fun scoreColor(score: Int): Int = when {
@@ -538,7 +657,7 @@ class CoachActivity : Activity() {
             text = value
             textSize = size
             if (bold) setTypeface(typeface, Typeface.BOLD)
-            if (color != null) setTextColor(color)
+            setTextColor(color ?: getColor(R.color.ink))
             visibility = View.VISIBLE
         }
     }

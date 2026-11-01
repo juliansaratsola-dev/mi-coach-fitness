@@ -6,16 +6,19 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.io.IOException
+import java.time.LocalDate
 
 /** Persists analyzed workouts as JSON in app-private storage; this is the coach's memory. */
 class WorkoutStore(context: Context) {
+    private val prefs = MonitorPreferences(context)
     private val file = AtomicFile(File(context.applicationContext.filesDir, FILE_NAME))
 
     @Synchronized
     fun all(): List<WorkoutRecord> {
         val array = readArray()
-        return (0 until array.length()).map { index ->
-            parse(array.getJSONObject(index))
+        val age = prefs.userAge
+        return (0 until array.length()).mapNotNull { index ->
+            array.optJSONObject(index)?.let { WorkoutJson.parse(it, age) }
         }
     }
 
@@ -26,10 +29,16 @@ class WorkoutStore(context: Context) {
         return JSONObject(array.getJSONObject(array.length() - 1).toString())
     }
 
+    /**
+     * Saves a reviewed workout. Its effort points, trench-day flag and the user's [notes] ("sensaciones") are
+     * computed here and stored with it, so the history keeps the score it had when it was recorded.
+     */
     @Synchronized
-    fun add(raw: JSONObject, fallbackDate: String): WorkoutRecord {
-        if (raw.isNull("date") || raw.optString("date").isBlank()) raw.put("date", fallbackDate)
-        val record = parse(raw)
+    fun add(raw: JSONObject, fallbackDate: String, notes: String? = null): WorkoutRecord {
+        val age = prefs.userAge
+        WorkoutJson.normalizeDate(raw, fallbackDate)
+        WorkoutJson.applyEffort(raw, notes, age)
+        val record = WorkoutJson.parse(raw, age)
         val array = readArray()
         array.put(raw)
         val output = file.startWrite()
@@ -43,6 +52,13 @@ class WorkoutStore(context: Context) {
         return record
     }
 
+    /** "Gravity" Form Score as of [today]: 30-day effort divided by (days since the last workout + 1). */
+    fun calculateFormScore(today: LocalDate = LocalDate.now()): Double = FormScore.calculate(all(), today)
+
+    /** Hidden prompt context: the current Form Score plus a summary of the last five workouts. */
+    fun getHistoricalContextForAI(today: LocalDate = LocalDate.now()): String =
+        HistoricalContext.build(all(), today)
+
     private fun readArray(): JSONArray {
         if (!file.baseFile.exists()) return JSONArray()
         return JSONArray(file.openRead().bufferedReader().use { it.readText() })
@@ -50,64 +66,5 @@ class WorkoutStore(context: Context) {
 
     companion object {
         private const val FILE_NAME = "workouts.json"
-
-        fun parse(json: JSONObject): WorkoutRecord {
-            val metrics = json.optJSONObject("metrics") ?: JSONObject()
-            val sections = json.optJSONArray("sections") ?: JSONArray()
-            return WorkoutRecord(
-                date = json.optString("date"),
-                type = json.optString("type", "Carrera"),
-                distanceKm = metrics.num("distanceKm"),
-                durationMin = metrics.num("durationMin"),
-                paceSecPerKm = metrics.num("paceSecPerKm")?.toInt(),
-                avgHr = metrics.num("avgHr")?.toInt(),
-                maxHr = metrics.num("maxHr")?.toInt(),
-                cadence = metrics.num("cadence")?.toInt(),
-                strideM = metrics.num("strideM"),
-                contactMs = metrics.num("contactMs")?.toInt(),
-                verticalOscCm = metrics.num("verticalOscCm"),
-                powerW = metrics.num("powerW")?.toInt(),
-                tempC = metrics.num("tempC")?.toInt(),
-                aerobicTe = metrics.num("aerobicTe"),
-                bodyBatteryImpact = metrics.num("bodyBatteryImpact")?.toInt(),
-                verticalRatioPct = metrics.num("verticalRatioPct"),
-                maxPowerW = metrics.num("maxPowerW")?.toInt(),
-                maxCadence = metrics.num("maxCadence")?.toInt(),
-                ascentM = metrics.num("ascentM")?.toInt(),
-                anaerobicTe = metrics.num("anaerobicTe"),
-                totalKcal = metrics.num("totalKcal")?.toInt(),
-                overallScore = json.optInt("overallScore", json.optInt("puntuacion_general", 0)).coerceIn(0, 10),
-                headline = json.optString("headline"),
-                sections = (0 until sections.length()).mapNotNull { i ->
-                    sections.optJSONObject(i)?.let {
-                        SectionReview(
-                            key = it.optString("key"),
-                            title = it.optString("title"),
-                            score = it.optInt("score", 0).coerceIn(0, 10),
-                            review = it.optString("review")
-                        )
-                    }
-                },
-                comparison = json.optString("comparison"),
-                suggestions = (json.optJSONArray("suggestions")
-                    ?: json.optJSONArray("sugerencias_proximo_entreno")).strings(),
-                followUpQuestions = json.optJSONArray("followUpQuestions").strings(),
-                tecnica = json.optString("tecnica"),
-                cardio = json.optString("cardio"),
-                potenciaRendimiento = json.optString("potencia_rendimiento"),
-                comparativaPoblacional = json.optString("comparativa_poblacional")
-            )
-        }
-
-        private fun JSONObject.num(key: String): Double? {
-            if (!has(key) || isNull(key)) return null
-            val value = optDouble(key, Double.NaN)
-            return if (value.isNaN()) null else value
-        }
-
-        private fun JSONArray?.strings(): List<String> {
-            if (this == null) return emptyList()
-            return (0 until length()).map { optString(it) }.filter { it.isNotBlank() }
-        }
     }
 }

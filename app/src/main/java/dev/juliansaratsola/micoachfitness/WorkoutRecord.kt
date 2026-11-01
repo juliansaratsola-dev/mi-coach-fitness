@@ -1,5 +1,11 @@
 package dev.juliansaratsola.micoachfitness
 
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
+import java.util.Locale
+
+/** Section of the previous (graded) review format. Kept so workouts saved before "Verdad Pura" still render. */
 data class SectionReview(
     val key: String,
     val title: String,
@@ -7,7 +13,20 @@ data class SectionReview(
     val review: String
 )
 
-/** One analyzed workout: extracted metrics plus the coach review. Pure Kotlin so it is unit-testable. */
+/** The five parts of the "Verdad Pura" review written by the coach. */
+data class VerdadPuraReview(
+    val tecnica: String = "",
+    val cardioYEsfuerzo: String = "",
+    val potenciaYConsistencia: String = "",
+    val comparativaMeritocratica: String = "",
+    val veredictoTrinchera: String = ""
+) {
+    val isEmpty: Boolean
+        get() = listOf(tecnica, cardioYEsfuerzo, potenciaYConsistencia, comparativaMeritocratica, veredictoTrinchera)
+            .all { it.isBlank() }
+}
+
+/** One analyzed workout: extracted metrics, local effort points and the coach review. Pure Kotlin so it is unit-testable. */
 data class WorkoutRecord(
     val date: String,
     val type: String,
@@ -30,18 +49,48 @@ data class WorkoutRecord(
     val ascentM: Int? = null,
     val anaerobicTe: Double? = null,
     val totalKcal: Int? = null,
-    val overallScore: Int,
-    val headline: String,
-    val sections: List<SectionReview>,
-    val comparison: String,
-    val suggestions: List<String>,
-    val followUpQuestions: List<String>,
+    val overallScore: Int = 0,
+    val headline: String = "",
+    val sections: List<SectionReview> = emptyList(),
+    val comparison: String = "",
+    val suggestions: List<String> = emptyList(),
+    val followUpQuestions: List<String> = emptyList(),
+    val puntosEsfuerzo: Int = 0,
+    val esDiaTrinchera: Boolean = false,
+    val textoSensaciones: String = "",
+    val verdadPura: VerdadPuraReview = VerdadPuraReview(),
     val tecnica: String = "",
     val cardio: String = "",
     val potenciaRendimiento: String = "",
     val comparativaPoblacional: String = ""
 ) {
     fun paceText(): String = formatPace(paceSecPerKm)
+
+    /** What the stored effort points rest on; anything but MEASURED means a standard value filled a gap. */
+    fun effortBasis(): EffortBasis = EffortCalculator.basisOf(durationMin, avgHr)
+
+    /** Secondary facts shown next to the effort points. Pace comes last: it is context, not the score. */
+    fun detailParts(): List<String> {
+        val us = java.util.Locale.US
+        return listOfNotNull(
+            durationMin?.takeIf { it > 0 }?.let { "%.0f min".format(us, it) },
+            distanceKm?.takeIf { it > 0 }?.let { "%.2f km".format(us, it) },
+            avgHr?.let { "FC $it" },
+            paceSecPerKm?.takeIf { it > 0 }?.let { "${formatPace(it)} /km" }
+        )
+    }
+
+    /** The workout day, or null when the stored date is not a valid ISO date. */
+    fun localDate(): LocalDate? = parseDate(date)
+
+    /** "3 may 2025 · Carrera": the workout day (shown as stored when it is not a valid date) and its type. */
+    fun headerText(locale: Locale = Locale.getDefault()): String {
+        val day = localDate()?.let { DateTimeFormatter.ofPattern("d MMM yyyy", locale).format(it) } ?: date.trim()
+        return listOf(day, type.trim()).filter { it.isNotEmpty() }.joinToString(" · ")
+    }
+
+    /** True for workouts reviewed before the "Verdad Pura" format, which carry a grade and sections instead. */
+    fun hasLegacyReview(): Boolean = verdadPura.isEmpty && (headline.isNotBlank() || sections.isNotEmpty())
 
     /** Metrics grouped for display; groups and values without data are left out. */
     fun metricGroups(): List<Pair<String, List<Pair<String, String>>>> {
@@ -86,36 +135,59 @@ data class WorkoutRecord(
         ).filter { it.second.isNotEmpty() }
     }
 
-    /** Compact single line used as history context in the next prompt. */
+    /** Compact single line used as history context in the next prompt: effort first, pace is just one more detail. */
     fun toHistoryLine(): String {
+        val us = java.util.Locale.US
         val parts = mutableListOf<String>()
         parts += date
         parts += type
-        distanceKm?.let { parts += "%.2f km".format(java.util.Locale.US, it) }
-        durationMin?.let { parts += "%.0f min".format(java.util.Locale.US, it) }
-        paceSecPerKm?.let { parts += "ritmo ${formatPace(it)}/km" }
+        durationMin?.let { parts += "%.0f min".format(us, it) }
+        distanceKm?.let { parts += "%.2f km".format(us, it) }
+        parts += "esfuerzo $puntosEsfuerzo pts" + when (effortBasis()) {
+            EffortBasis.MEASURED -> ""
+            EffortBasis.NO_HEART_RATE -> " (estimado, sin FC)"
+            EffortBasis.NO_DURATION -> " (estimado, sin duración)"
+            EffortBasis.NO_DATA -> " (estimado, sin FC ni duración)"
+        }
+        if (esDiaTrinchera) parts += "DÍA DE TRINCHERA"
         avgHr?.let { parts += "FC media $it" }
         maxHr?.let { parts += "FC max $it" }
+        paceSecPerKm?.let { parts += "ritmo ${formatPace(it)}/km" }
         cadence?.let { parts += "cadencia $it" }
         maxCadence?.let { parts += "cadencia máx. $it" }
-        strideM?.let { parts += "zancada %.2f m".format(java.util.Locale.US, it) }
+        strideM?.let { parts += "zancada %.2f m".format(us, it) }
         contactMs?.let { parts += "contacto suelo $it ms" }
-        verticalOscCm?.let { parts += "osc. vertical %.1f cm".format(java.util.Locale.US, it) }
-        verticalRatioPct?.let { parts += "ratio vertical %.1f%%".format(java.util.Locale.US, it) }
+        verticalOscCm?.let { parts += "osc. vertical %.1f cm".format(us, it) }
+        verticalRatioPct?.let { parts += "ratio vertical %.1f%%".format(us, it) }
         powerW?.let { parts += "potencia $it W" }
         maxPowerW?.let { parts += "potencia máx. $it W" }
         ascentM?.let { parts += "ascenso $it m" }
         tempC?.let { parts += "temp $it°C" }
-        aerobicTe?.let { parts += "TE aeróbico %.1f".format(java.util.Locale.US, it) }
-        anaerobicTe?.let { parts += "TE anaeróbico %.1f".format(java.util.Locale.US, it) }
+        aerobicTe?.let { parts += "TE aeróbico %.1f".format(us, it) }
+        anaerobicTe?.let { parts += "TE anaeróbico %.1f".format(us, it) }
         totalKcal?.let { parts += "$it kcal" }
         bodyBatteryImpact?.let { parts += "Body Battery $it" }
-        val scores = sections.joinToString(", ") { "${it.key}=${it.score}" }
-        parts += "notas: general=$overallScore" + if (scores.isNotEmpty()) ", $scores" else ""
+        feelingsForPrompt()?.let { parts += "sensaciones: \"$it\"" }
         return parts.joinToString(" | ")
     }
 
+    /** The user's own words, collapsed to one line and capped so a long note cannot flood the prompt. */
+    fun feelingsForPrompt(): String? {
+        val text = textoSensaciones.trim().replace(Regex("\\s+"), " ").replace('"', '\'')
+        if (text.isEmpty()) return null
+        return if (text.length > MAX_PROMPT_FEELINGS) text.take(MAX_PROMPT_FEELINGS - 1).trimEnd() + "…" else text
+    }
+
     companion object {
+        private const val MAX_PROMPT_FEELINGS = 200
+
+        /** Parses a yyyy-MM-dd date; null when the text is not a valid ISO date. */
+        fun parseDate(text: String?): LocalDate? = try {
+            text?.let { LocalDate.parse(it.trim()) }
+        } catch (error: DateTimeParseException) {
+            null
+        }
+
         fun formatPace(secPerKm: Int?): String {
             if (secPerKm == null || secPerKm <= 0) return "-"
             return "%d:%02d".format(secPerKm / 60, secPerKm % 60)

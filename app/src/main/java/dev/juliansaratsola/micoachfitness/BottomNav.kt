@@ -2,7 +2,6 @@ package dev.juliansaratsola.micoachfitness
 
 import android.app.Activity
 import android.content.Intent
-import android.graphics.Color
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -25,14 +24,14 @@ object BottomNav {
         val density = activity.resources.displayMetrics.density
         val root = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
         root.addView(content, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-        root.addView(View(activity).apply { setBackgroundColor(Color.parseColor("#1F000000")) },
+        root.addView(View(activity).apply { setBackgroundColor(activity.getColor(R.color.cream_line)) },
             LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1))
         val bar = LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
-            setBackgroundColor(Color.WHITE)
+            setBackgroundColor(activity.getColor(R.color.cream_card))
         }
         val active = activity.getColor(R.color.seed)
-        val inactive = Color.parseColor("#757575")
+        val inactive = activity.getColor(R.color.ink_muted)
         for (tab in Tab.values()) {
             val color = if (tab == selected) active else inactive
             val item = LinearLayout(activity).apply {
