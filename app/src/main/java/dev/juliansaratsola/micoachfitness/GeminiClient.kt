@@ -111,29 +111,30 @@ class GeminiClient(private val context: Context, private val apiKey: String) {
             throw CoachException("Respuesta de Gemini no válida.")
         }
         if (!WorkoutJson.hasReview(review)) throw CoachException("Respuesta de Gemini no válida.")
-        if (images.isNotEmpty() && WorkoutJson.needsTechnicalMetricSupplement(review)) {
+        if (images.isNotEmpty() && WorkoutJson.shouldSupplementTechnicalMetrics(review)) {
             try {
                 val supplement = extractTechnicalReview(images)
                 WorkoutJson.mergeTechnicalSupplement(review, supplement)
-                if (WorkoutJson.needsTechnicalMetricSupplement(review)) {
-                    review.put(WorkoutJson.KEY_TECHNICAL_WARNING, true)
-                    review.put(WorkoutJson.KEY_TECHNIQUE, "")
-                }
+                markTechnicalWarningIfNeeded(review)
             } catch (error: CoachException) {
                 Log.w(TAG, "Supplemental running-dynamics extraction failed", error)
-                review.put(WorkoutJson.KEY_TECHNICAL_WARNING, true)
-                review.put(WorkoutJson.KEY_TECHNIQUE, "")
+                markTechnicalWarningIfNeeded(review)
             } catch (error: JSONException) {
                 Log.w(TAG, "Supplemental running-dynamics response was invalid", error)
-                review.put(WorkoutJson.KEY_TECHNICAL_WARNING, true)
-                review.put(WorkoutJson.KEY_TECHNIQUE, "")
+                markTechnicalWarningIfNeeded(review)
             } catch (error: IOException) {
                 Log.w(TAG, "Supplemental running-dynamics request failed", error)
-                review.put(WorkoutJson.KEY_TECHNICAL_WARNING, true)
-                review.put(WorkoutJson.KEY_TECHNIQUE, "")
+                markTechnicalWarningIfNeeded(review)
             }
         }
         return review
+    }
+
+    private fun markTechnicalWarningIfNeeded(review: JSONObject) {
+        if (WorkoutJson.needsTechnicalMetricSupplement(review)) {
+            review.put(WorkoutJson.KEY_TECHNICAL_WARNING, true)
+            review.put(WorkoutJson.KEY_TECHNIQUE, "")
+        }
     }
 
     private fun extractTechnicalReview(images: List<Uri>): JSONObject {

@@ -181,6 +181,19 @@ class WorkoutJsonTest {
     }
 
     @Test
+    fun relativePowerUsesLocalWeightOnlyWhenRequestedForDisplay() {
+        val raw = JSONObject("""{"metrics":{"powerW":276,"maxPowerW":339}}""")
+        val record = WorkoutJson.parse(raw, userWeightKg = 75.0)
+
+        val ordinaryGroups = record.metricGroups().flatMap { it.second }.toMap()
+        val displayGroups = record.metricGroups(includePowerPerKg = true).flatMap { it.second }.toMap()
+        assertFalse(ordinaryGroups.containsKey("Potencia media (W/kg)"))
+        assertEquals("3.68 W/kg", displayGroups["Potencia media (W/kg)"])
+        assertEquals("4.52 W/kg", displayGroups["Potencia máxima (W/kg)"])
+        assertFalse(raw.has("bodyWeightKg"))
+    }
+
+    @Test
     fun applyEffortWritesTheThreePersistedKeys() {
         val raw = JSONObject("""{"date":"2026-10-30","type":"Carrera","metrics":{"durationMin":50,"avgHr":160,"maxHr":175}}""")
         WorkoutJson.applyEffort(raw, "Mucho calor y piernas pesadas", null)

@@ -31,9 +31,10 @@ object WorkoutJson {
 
     /**
      * Builds a record from stored JSON. Workouts saved before the effort model have no `puntos_esfuerzo`, so it is
-     * derived from their metrics; [userAge] only matters for that backfill.
+     * derived from their metrics; [userAge] only matters for that backfill. [userWeightKg] is used only for local
+     * W/kg display.
      */
-    fun parse(json: JSONObject, userAge: Int? = null): WorkoutRecord {
+    fun parse(json: JSONObject, userAge: Int? = null, userWeightKg: Double? = null): WorkoutRecord {
         val metrics = json.optJSONObject("metrics") ?: JSONObject()
         val sections = json.optJSONArray("sections") ?: JSONArray()
         val durationMin = metrics.num("durationMin")
@@ -102,7 +103,10 @@ object WorkoutJson {
             activeKcal = metrics.num("activeKcal")?.toInt(),
             avgSpeedKmh = metrics.num("avgSpeedKmh"),
             minSpeedKmh = metrics.num("minSpeedKmh"),
-            maxSpeedKmh = metrics.num("maxSpeedKmh")
+            maxSpeedKmh = metrics.num("maxSpeedKmh"),
+            bodyWeightKg = userWeightKg?.takeIf {
+                it.isFinite() && it in WorkoutRecord.MIN_BODY_WEIGHT_KG..WorkoutRecord.MAX_BODY_WEIGHT_KG
+            }
         )
     }
 
@@ -178,6 +182,15 @@ object WorkoutJson {
         val technique = json.optString(KEY_TECHNIQUE).lowercase()
         val contradictsMetrics = detected > 0 && technique.contains("no hay datos")
         return detected < MIN_RUNNING_DYNAMICS_METRICS || contradictsMetrics
+    }
+
+    /** Requests a focused second read whenever any requested metric was omitted by the full review. */
+    fun shouldSupplementTechnicalMetrics(json: JSONObject): Boolean {
+        val metrics = json.optJSONObject("metrics") ?: return true
+        val missingMetrics = TECHNICAL_METRICS.any { key -> !metrics.has(key) || metrics.isNull(key) }
+        val detectedDynamics = RUNNING_DYNAMICS_METRICS.any { key -> metrics.has(key) && !metrics.isNull(key) }
+        val technique = json.optString(KEY_TECHNIQUE).lowercase()
+        return missingMetrics || (detectedDynamics && technique.contains("no hay datos"))
     }
 
     /** Fills only missing technical fields, preserving any values already read by the main review. */
