@@ -41,15 +41,17 @@ class WorkoutStore(context: Context) {
         val record = WorkoutJson.parse(raw, age)
         val array = readArray()
         array.put(raw)
-        val output = file.startWrite()
-        try {
-            output.write(array.toString().toByteArray(Charsets.UTF_8))
-            file.finishWrite(output)
-        } catch (error: IOException) {
-            file.failWrite(output)
-            throw error
-        }
+        writeArray(array)
         return record
+    }
+
+    @Synchronized
+    @Throws(IOException::class)
+    fun deleteAt(index: Int) {
+        val array = readArray()
+        if (index !in 0 until array.length()) throw IndexOutOfBoundsException("No workout at index $index")
+        array.remove(index)
+        writeArray(array)
     }
 
     /** "Gravity" Form Score as of [today]: 30-day effort divided by (days since the last workout + 1). */
@@ -62,6 +64,17 @@ class WorkoutStore(context: Context) {
     private fun readArray(): JSONArray {
         if (!file.baseFile.exists()) return JSONArray()
         return JSONArray(file.openRead().bufferedReader().use { it.readText() })
+    }
+
+    private fun writeArray(array: JSONArray) {
+        val output = file.startWrite()
+        try {
+            output.write(array.toString().toByteArray(Charsets.UTF_8))
+            file.finishWrite(output)
+        } catch (error: IOException) {
+            file.failWrite(output)
+            throw error
+        }
     }
 
     companion object {

@@ -5,10 +5,12 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Base64
+import android.util.Log
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
+import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -70,7 +72,13 @@ class GeminiClient(private val context: Context, private val apiKey: String) {
                 CoachPrompt.userPrompt(historicalContext, todayIso, notes, workoutData, images.isNotEmpty())
             )
         )
-        for (uri in images) {
+        for ((index, uri) in images.withIndex()) {
+            parts.put(
+                JSONObject().put(
+                    "text",
+                    "CAPTURA ${index + 1} DE ${images.size}: inspecciona toda la imagen, incluidas las secciones inferiores y los valores pequeños."
+                )
+            )
             parts.put(
                 JSONObject().put(
                     "inlineData",
@@ -103,7 +111,72 @@ class GeminiClient(private val context: Context, private val apiKey: String) {
             throw CoachException("Respuesta de Gemini no válida.")
         }
         if (!WorkoutJson.hasReview(review)) throw CoachException("Respuesta de Gemini no válida.")
+        if (images.isNotEmpty() && WorkoutJson.needsTechnicalMetricSupplement(review)) {
+            try {
+                val supplement = extractTechnicalReview(images)
+                WorkoutJson.mergeTechnicalSupplement(review, supplement)
+                if (WorkoutJson.needsTechnicalMetricSupplement(review)) {
+                    review.put(WorkoutJson.KEY_TECHNICAL_WARNING, true)
+                    review.put(WorkoutJson.KEY_TECHNIQUE, "")
+                }
+            } catch (error: CoachException) {
+                Log.w(TAG, "Supplemental running-dynamics extraction failed", error)
+                review.put(WorkoutJson.KEY_TECHNICAL_WARNING, true)
+                review.put(WorkoutJson.KEY_TECHNIQUE, "")
+            } catch (error: JSONException) {
+                Log.w(TAG, "Supplemental running-dynamics response was invalid", error)
+                review.put(WorkoutJson.KEY_TECHNICAL_WARNING, true)
+                review.put(WorkoutJson.KEY_TECHNIQUE, "")
+            } catch (error: IOException) {
+                Log.w(TAG, "Supplemental running-dynamics request failed", error)
+                review.put(WorkoutJson.KEY_TECHNICAL_WARNING, true)
+                review.put(WorkoutJson.KEY_TECHNIQUE, "")
+            }
+        }
         return review
+    }
+
+    private fun extractTechnicalReview(images: List<Uri>): JSONObject {
+        val parts = JSONArray().put(JSONObject().put("text", CoachPrompt.TECHNICAL_EXTRACTION_PROMPT))
+        for ((index, uri) in images.withIndex()) {
+            parts.put(JSONObject().put(
+                "text",
+                "CAPTURA ${index + 1} DE ${images.size}. Lee cada valor visible de dinámica de carrera."
+            ))
+            parts.put(
+                JSONObject().put(
+                    "inlineData",
+                    JSONObject().put("mimeType", "image/jpeg").put("data", encodeImage(uri))
+                )
+            )
+        }
+        val body = JSONObject()
+            .put(
+                "systemInstruction",
+                JSONObject().put(
+                    "parts",
+                    JSONArray().put(
+                        JSONObject().put(
+                            "text",
+                            "Eres un extractor visual preciso de estadísticas Garmin. Lee los rótulos y valores directamente de todas las imágenes. Nunca adivines."
+                        )
+                    )
+                )
+            )
+            .put("contents", JSONArray().put(JSONObject().put("role", "user").put("parts", parts)))
+            .put(
+                "generationConfig",
+                JSONObject()
+                    .put("responseMimeType", "application/json")
+                    .put("responseSchema", JSONObject(CoachPrompt.TECHNICAL_EXTRACTION_SCHEMA))
+                    .put("temperature", 0.1)
+            )
+        val response = JSONObject(generateWithFallback(body.toString()))
+        val text = response.optJSONArray("candidates")?.optJSONObject(0)
+            ?.optJSONObject("content")?.optJSONArray("parts")?.optJSONObject(0)
+            ?.optString("text")
+        if (text.isNullOrBlank()) throw CoachException("Gemini no devolvió métricas técnicas.")
+        return WorkoutJson.parseReviewResponse(text)
     }
 
     /** Retries transient overload errors, then falls back to the next available model. */
@@ -184,6 +257,7 @@ class GeminiClient(private val context: Context, private val apiKey: String) {
     }
 
     companion object {
+        private const val TAG = "GeminiClient"
         private const val ATTEMPTS_PER_MODEL = 2
         private const val MAX_MODELS = 3
         private const val MAX_CHAT_MESSAGES = 24

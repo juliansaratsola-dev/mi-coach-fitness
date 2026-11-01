@@ -62,6 +62,13 @@ class MonitorPreferences(context: Context) {
         prefs.edit().remove(KEY_PENDING).apply()
     }
 
+    fun removePendingCapture(uri: String) {
+        val updated = pendingCaptures().filterNot { it == uri }
+        val editor = prefs.edit()
+        if (updated.isEmpty()) editor.remove(KEY_PENDING) else editor.putString(KEY_PENDING, updated.joinToString("\n"))
+        editor.apply()
+    }
+
     fun isHandled(id: Long): Boolean = handledIds().contains(id)
 
     fun markHandled(id: Long) {
