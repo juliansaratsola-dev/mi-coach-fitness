@@ -7,6 +7,8 @@ val junitConfig = configurations.create("junit")
 
 dependencies {
     add("junit", "junit:junit:4.13.2")
+    // Android provides org.json at runtime; JVM tests that parse stored workouts need the same API.
+    add("junit", "org.json:json:20240303")
 }
 
 val androidSdk = providers.provider { resolveAndroidSdk() }
@@ -78,6 +80,9 @@ tasks.register("assembleDebug") {
                 "javac",
                 "--release",
                 "17",
+                // aapt2 writes R.java as UTF-8 and copies the XML comments (Spanish, with accents) into it.
+                "-encoding",
+                "UTF-8",
                 "-classpath",
                 sdkJar.absolutePath,
                 "-d",
@@ -183,7 +188,7 @@ tasks.register("assembleDebug") {
 
 tasks.register("testDebugUnitTest") {
     group = "verification"
-    description = "Run JVM unit tests for screenshot detection, Garmin window rules, and coach history prompts"
+    description = "Run JVM unit tests for screenshot detection, Garmin window rules, effort scoring, Form Score and coach prompts"
     val junitFiles = junitConfig
     doLast {
         val kotlinc = resolveKotlinc()
@@ -194,7 +199,12 @@ tasks.register("testDebugUnitTest") {
         val sources = listOf(
             project.file("src/main/java/dev/juliansaratsola/micoachfitness/ScreenshotClassifier.kt"),
             project.file("src/main/java/dev/juliansaratsola/micoachfitness/GarminActivityWindow.kt"),
+            project.file("src/main/java/dev/juliansaratsola/micoachfitness/EffortCalculator.kt"),
             project.file("src/main/java/dev/juliansaratsola/micoachfitness/WorkoutRecord.kt"),
+            project.file("src/main/java/dev/juliansaratsola/micoachfitness/WorkoutJson.kt"),
+            project.file("src/main/java/dev/juliansaratsola/micoachfitness/FormScore.kt"),
+            project.file("src/main/java/dev/juliansaratsola/micoachfitness/ConsistencyChartLayout.kt"),
+            project.file("src/main/java/dev/juliansaratsola/micoachfitness/HistoricalContext.kt"),
             project.file("src/main/java/dev/juliansaratsola/micoachfitness/CoachPrompt.kt"),
             project.file("src/main/java/dev/juliansaratsola/micoachfitness/ModelPicker.kt"),
             project.file("src/main/java/dev/juliansaratsola/micoachfitness/HealthSession.kt"),

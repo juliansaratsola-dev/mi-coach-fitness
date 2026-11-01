@@ -39,6 +39,30 @@ class SettingsActivity : Activity() {
             prefs.geminiApiKey = keyInput.text.toString()
             Toast.makeText(this, R.string.key_saved, Toast.LENGTH_SHORT).show()
         }
+        val ageInput = content.findViewById<EditText>(R.id.ageInput)
+        ageInput.setText(prefs.userAge?.toString().orEmpty())
+        content.findViewById<TextView>(R.id.ageHelp).text =
+            getString(R.string.age_help, EffortCalculator.DEFAULT_MAX_HR.toInt())
+        content.findViewById<Button>(R.id.saveAgeButton).setOnClickListener { saveAge(ageInput) }
+    }
+
+    /** A blank field clears the age; anything else must be a plausible age or nothing is saved. */
+    private fun saveAge(input: EditText) {
+        val typed = input.text.toString().trim()
+        if (typed.isEmpty()) {
+            prefs.userAge = null
+            val message = getString(R.string.age_cleared, EffortCalculator.DEFAULT_MAX_HR.toInt())
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val age = typed.toIntOrNull()?.takeIf { it in EffortCalculator.MIN_AGE..EffortCalculator.MAX_AGE }
+        if (age == null) {
+            val message = getString(R.string.age_invalid, EffortCalculator.MIN_AGE, EffortCalculator.MAX_AGE)
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+            return
+        }
+        prefs.userAge = age
+        Toast.makeText(this, R.string.age_saved, Toast.LENGTH_SHORT).show()
     }
 
     override fun onResume() {

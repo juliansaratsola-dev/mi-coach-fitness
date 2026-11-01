@@ -8,11 +8,15 @@ import android.widget.CompoundButton
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
+import org.json.JSONException
+import java.io.IOException
 
 class MainActivity : Activity() {
     private lateinit var monitorSwitch: Switch
     private lateinit var statusText: TextView
+    private lateinit var dashboard: HomeDashboard
     private lateinit var prefs: MonitorPreferences
+    private lateinit var workouts: WorkoutStore
     private var pendingEnable = false
 
     private val switchListener = CompoundButton.OnCheckedChangeListener { button, isChecked ->
@@ -27,9 +31,12 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = MonitorPreferences(this)
-        BottomNav.attach(this, layoutInflater.inflate(R.layout.activity_main, null), BottomNav.Tab.HOME)
+        workouts = WorkoutStore(this)
+        val content = layoutInflater.inflate(R.layout.activity_main, null)
+        BottomNav.attach(this, content, BottomNav.Tab.HOME)
         monitorSwitch = findViewById(R.id.monitorSwitch)
         statusText = findViewById(R.id.statusText)
+        dashboard = HomeDashboard(this, content)
         refreshUi()
         if (savedInstanceState == null && !prefs.setupShown) {
             prefs.setupShown = true
@@ -43,6 +50,7 @@ class MainActivity : Activity() {
             startMonitorService()
         }
         refreshUi()
+        refreshDashboard()
     }
 
     override fun onRequestPermissionsResult(
@@ -90,6 +98,18 @@ class MainActivity : Activity() {
             Log.e(TAG, "Unable to start monitor", error)
             prefs.isEnabled = false
             Toast.makeText(this, R.string.service_start_failed, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun refreshDashboard() {
+        try {
+            dashboard.bind(workouts.all())
+        } catch (error: IOException) {
+            Log.w(TAG, "Unable to read the workout history", error)
+            dashboard.showUnavailable()
+        } catch (error: JSONException) {
+            Log.w(TAG, "Unable to read the workout history", error)
+            dashboard.showUnavailable()
         }
     }
 

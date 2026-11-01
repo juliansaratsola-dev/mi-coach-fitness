@@ -41,6 +41,15 @@ class MonitorPreferences(context: Context) {
             prefs.edit().putBoolean(KEY_HC_WATCH, value).apply()
         }
 
+    /** Optional age, only used to estimate the maximum heart rate for the effort points. Null when not set. */
+    var userAge: Int?
+        get() = prefs.getInt(KEY_AGE, 0).takeIf { it in EffortCalculator.MIN_AGE..EffortCalculator.MAX_AGE }
+        set(value) {
+            val editor = prefs.edit()
+            if (value == null) editor.remove(KEY_AGE) else editor.putInt(KEY_AGE, value)
+            editor.apply()
+        }
+
     fun pendingCaptures(): List<String> =
         prefs.getString(KEY_PENDING, null)?.split('\n')?.filter { it.isNotBlank() } ?: emptyList()
 
@@ -76,6 +85,7 @@ class MonitorPreferences(context: Context) {
         private const val KEY_HC_END = "hc_last_session_end"
         private const val KEY_HC_OPT = "hc_optional_asked"
         private const val KEY_HC_WATCH = "hc_watch"
+        private const val KEY_AGE = "user_age"
         private const val KEY_PENDING = "pending_captures"
         private const val MAX_HANDLED = 50
         private const val MAX_PENDING = 6

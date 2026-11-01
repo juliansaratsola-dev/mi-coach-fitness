@@ -2,7 +2,7 @@
 
 Coach personal de running + calistenia con historial privado en el dispositivo.
 
-App Android (Kotlin) que detecta capturas de Garmin Connect y permite acumularlas para un review estructurado con Gemini: notas del 1 al 10, comparativas con el historial, sugerencias y preguntas de seguimiento. También conserva la opción de compartir una captura con Copilot.
+App Android (Kotlin) que detecta capturas de Garmin Connect y permite acumularlas para un review con Gemini guiado por la filosofía **Verdad Pura**: el éxito se mide por el esfuerzo relativo, la constancia y la resiliencia, no por el ritmo. También conserva la opción de compartir una captura con Copilot.
 
 ## Qué hace
 
@@ -11,17 +11,27 @@ App Android (Kotlin) que detecta capturas de Garmin Connect y permite acumularla
 3. Una imagen nueva cuenta como screenshot si el nombre o la ruta contiene `Screenshots`, `screenshot` o `captura`.
 4. Con acceso de uso, se comprueba que `com.garmin.android.apps.connectmobile` estuvo en primer plano en una ventana de 10 segundos alrededor de la captura (`DATE_TAKEN`, o `DATE_ADDED` si no hay fecha de toma).
 5. Si coincide, aparece una notificación con **Agregar Coach** (suma la captura sin abrir la app; repítelo con cada captura del entrenamiento) y **Analizar entreno** (abre el Coach y genera el review de inmediato).
-6. El Coach envía las capturas elegidas, tus notas de sensaciones y hasta 8 sesiones anteriores a la API de Gemini. El historial se guarda en el almacenamiento privado de la app en el dispositivo; Gemini recibe esos datos al generar cada análisis.
+6. El Coach envía las capturas elegidas, tus notas de sensaciones, tu Form Score y un resumen de tus últimos 5 entrenos a la API de Gemini (en el chat, hasta 8 sesiones). El historial se guarda en el almacenamiento privado de la app en el dispositivo; Gemini recibe esos datos al generar cada análisis.
+
+## Verdad Pura: esfuerzo, no ritmo
+
+Las apps de fitness premian récords y ritmos rápidos, y esconden el esfuerzo invisible y los días malos. Aquí el éxito se mide por el esfuerzo relativo, la constancia a largo plazo y la resiliencia: un principiante sufriendo a 7:30 min/km suma los mismos puntos que un veterano sufriendo a 4:00 min/km.
+
+- **Puntos de esfuerzo** (`EffortCalculator`, independiente de la IA): carga interna estilo TRIMP, es decir, minutos en cada zona cardíaca por el peso de la zona (zonas 1 a 5 = 1.0 a 5.0, desde el 50, 60, 70, 80 y 90 % de la FC máxima). Como solo hay FC media y máxima de la sesión, los minutos por zona se estiman con una curva normal centrada en la media: es una aproximación, no una medición de laboratorio. La FC máxima es 220 − edad (190 ppm si no indicas tu edad en **Config**). El ritmo y la distancia no intervienen. Sin FC se usa un esfuerzo estándar (todo el tiempo en zona 2) y sin duración se asumen 30 min; la tarjeta avisa de que los puntos son estimados.
+- **Día de trinchera**: si en *Sensaciones* aparece sufrimiento (pesado, cansancio, dolor, calor, lluvia…; «sin dolor» no cuenta) y el esfuerzo base es alto (100 puntos o más), la sesión se marca como día de trinchera y suma ×1,2. Sin FC ni duración medidas nunca lo es.
+- **Form Score** (gravedad): suma de los puntos de los últimos 30 días dividida entre (días desde el último entreno + 1). Si dejas de entrenar cae día a día; nadie vive de éxitos pasados. En **Inicio** se muestra como nivel de RPG (de Oxidado a Inquebrantable); el nivel *n* empieza en 25·(*n* − 1)² puntos.
+- **Consistencia**: el gráfico de **Inicio** dibuja los últimos 30 días. Cada día entrenado es una barra con altura proporcional al esfuerzo (naranja si fue de trinchera) y los días de descanso quedan vacíos.
+- **Coach de la Verdad**: el prompt de Gemini es técnico y directo, sin motivación vacía. No alaba tiempos rápidos sin constancia previa, reconoce la resiliencia de los días de trinchera, normaliza el cansancio cuando los números caen y responde con un JSON estricto: `tecnica`, `cardio_y_esfuerzo`, `potencia_y_consistencia`, `comparativa_meritocratica` y `veredicto_trinchera` (más `date`, `type` y `metrics`, con los que la app calcula el esfuerzo en local).
 
 ## Coach con Gemini
 
 1. Crea una API key de Gemini y guárdala en la pestaña **Config**. La clave queda en las preferencias privadas de la app en este dispositivo; no se incluye en el repositorio.
 2. Desde cada notificación de Garmin, pulsa **Agregar al Coach** para ir reuniendo las capturas de resumen y estadísticas.
-3. Abre **Coach**, añade opcionalmente cómo te sentiste y pulsa **Generar review**.
-4. El review muestra una nota general y notas por sección, los datos detectados, una comparativa con las últimas sesiones, sugerencias concretas y preguntas de seguimiento. La sesión analizada pasa al historial local para contextualizar próximos reviews.
-5. Al final de **Coach**, puedes conversar libremente con la IA sobre la review, tus sensaciones y la evolución de tu historial. La conversación también se guarda localmente y cada respuesta usa la review más reciente y hasta 8 sesiones como contexto.
+3. Abre **Coach**, añade opcionalmente cómo te sentiste (piernas pesadas, calor, lluvia, dolor…) y pulsa **Generar review**.
+4. El review abre con tus **puntos de esfuerzo** (y la marca de día de trinchera, si la hay) y sigue con el veredicto de trinchera, el costo cardíaco, la comparativa meritocrática con tu historial, la consistencia del ritmo y la técnica, más los datos detectados. No hay notas del 1 al 10. Los reviews guardados antes de Verdad Pura conservan el formato con notas con el que se guardaron. La sesión analizada pasa al historial local, que muestra fecha, puntos de esfuerzo y datos secundarios para contextualizar próximos reviews.
+5. Al final de **Coach**, puedes conversar libremente con la IA sobre la review, tus sensaciones y la evolución de tu historial. La conversación también se guarda localmente y cada respuesta usa la review más reciente, tu Form Score y hasta 8 sesiones como contexto.
 
-La app conserva el historial, la conversación y la clave localmente. Al chatear, el mensaje, hasta 24 mensajes recientes y el contexto de hasta 8 sesiones (incluida la última review) se transmiten a Google Gemini. Las capturas que envías para analizar y tus notas también se transmiten al generar un review; no se envían automáticamente al detectar una captura. Puedes vaciar las capturas pendientes antes de analizarlas. La evaluación es orientativa, no médica, y no debería usarse para diagnosticar lesiones.
+La app conserva el historial, la conversación y la clave localmente. Al chatear, el mensaje, hasta 24 mensajes recientes, tu Form Score y el contexto de hasta 8 sesiones (incluida la última review) se transmiten a Google Gemini. Al generar un review se transmiten las capturas que envías, tus notas, tu Form Score y el resumen de tus últimos 5 entrenos; no se envían automáticamente al detectar una captura. Tu edad no se envía: solo se usa en el teléfono para calcular el esfuerzo. Puedes vaciar las capturas pendientes antes de analizarlas. La evaluación es orientativa, no médica, y no debería usarse para diagnosticar lesiones.
 
 ## Requisitos para compilar
 
@@ -71,8 +81,8 @@ Sin acceso de uso el filtro Garmin no puede ejecutarse. En ese caso el MVP sigue
 5. Activa el switch **Monitoreo activo**. Debe quedar una notificación permanente de monitoreo.
 6. Abre Garmin Connect (`com.garmin.android.apps.connectmobile`) y toma una captura. El archivo suele llamarse `Screenshot_….png` o `Captura de pantalla….png` y vivir en `Pictures/Screenshots`.
 7. En unos segundos debe llegar la notificación **Captura de Garmin detectada**. Pulsa **Agregar Coach** para acumular cada captura; repite con las estadísticas que quieras incluir.
-8. Abre **Mi Coach Fitness**, guarda tu API key de Gemini en **Config** y entra en la pestaña **Coach**. Añade cómo te sentiste (opcional) y genera el review.
-9. Comprueba las notas, sugerencias y comparativa; la sesión se conserva en el historial local para próximos reviews.
+8. Abre **Mi Coach Fitness**, guarda tu API key de Gemini en **Config** (y, si quieres, tu edad para estimar la FC máxima) y entra en la pestaña **Coach**. Añade cómo te sentiste (opcional) y genera el review.
+9. Comprueba la tarjeta de esfuerzo (los puntos en grande; si escribiste algo como «piernas pesadas» o «calor» y el esfuerzo fue alto, el borde naranja con la llama de día de trinchera), el veredicto y los datos detectados. En **Inicio** deben aparecer el nivel del Form Score, el gráfico de los últimos 30 días y el último entreno; la sesión se conserva en el historial local para próximos reviews.
 ### Review sin capturas (Health Connect)
 
 Requiere Android 14 o superior. En Garmin Connect activa la integración con Health Connect (Más > Ajustes > Aplicaciones conectadas) para que escriba tus entrenamientos allí. En el Coach pulsa **Usar Health Connect**, concede los permisos y elige el entrenamiento de la lista (se muestran fecha, distancia, ritmo, FC y app de origen). Se leen distancia, ritmo, FC (mín/media/máx), potencia, cadencia, ascenso, velocidad máxima y calorías si están disponibles, solo de la app que escribió el entrenamiento. Si tienes capturas agregadas en el Coach, se envían junto con los datos para completar zancada, contacto con el suelo, oscilación, TE y Body Battery. Con el monitoreo activo, la app revisa Health Connect cada 3 minutos y, cuando termina un entrenamiento nuevo, muestra **¿Quieres analizar tu entrenamiento?**. Las métricas que Health Connect no recibe (zancada, contacto con el suelo, oscilación vertical, TE, Body Battery) salen de las capturas si las agregaste antes de pulsar el botón.
@@ -81,7 +91,7 @@ Requiere Android 14 o superior. En Garmin Connect activa la integración con Hea
 
 Prueba del fallback: deja el monitoreo activo sin conceder acceso de uso, toma un screenshot de cualquier app y confirma que igual aparece la notificación. Con el acceso de uso concedido, un screenshot tomado fuera de la ventana de 10 s de Garmin no debe notificar.
 
-Los tests de JVM cubren los marcadores de ruta, la ventana de 10 s y el contexto comparativo del Coach:
+Los tests de JVM cubren los marcadores de ruta, la ventana de 10 s, el cálculo de esfuerzo y de días de trinchera, el Form Score, el contexto oculto para la IA, el JSON de Gemini, la geometría del gráfico y el contexto comparativo del Coach:
 
 ```bash
 ./gradlew :app:testDebugUnitTest
@@ -103,11 +113,13 @@ Los tests de JVM cubren los marcadores de ruta, la ventana de 10 s y el contexto
 
 ## Mapa rápido
 
-- `MainActivity` (Inicio): switch de monitoreo. `SettingsActivity` (Config): permisos, acceso de uso y API key. `BottomNav`: barra inferior de 4 pestañas (Inicio, Coach, Próximamente, Config).
+- `MainActivity` (Inicio): nivel del Form Score, gráfico de consistencia de 30 días, tarjeta de esfuerzo del último entreno y switch de monitoreo. `SettingsActivity` (Config): permisos, acceso de uso, API key y edad. `BottomNav`: barra inferior de 4 pestañas (Inicio, Coach, Próximamente, Config).
+- `HomeDashboard`, `EffortCardView` y `ConsistencyChart`: las vistas de Verdad Pura (nivel, tarjeta de esfuerzo y gráfico de barras).
 - `CoachActivity`: capturas pendientes, review, historial y chat con el coach.
-- `GeminiClient` / `CoachPrompt`: análisis multimodal, comparativas y conversación contextual.
+- `GeminiClient` / `CoachPrompt`: análisis multimodal, prompt de la Verdad con esquema JSON estricto y conversación contextual.
 - `CoachChatStore`: persistencia local de la conversación del Coach.
-- `WorkoutStore` / `WorkoutRecord`: historial local de métricas y reviews.
+- `WorkoutStore` / `WorkoutRecord` / `WorkoutJson`: historial local con `puntos_esfuerzo`, `es_dia_trinchera` y `texto_sensaciones`, y lectura del JSON guardado.
+- `EffortCalculator` / `FormScore` / `HistoricalContext` / `ConsistencyChartLayout`: esfuerzo, gravedad, contexto oculto para la IA y geometría del gráfico. Son lógica pura, con tests.
 - `ScreenshotMonitorService`: foreground service + `ContentObserver`.
 - `ScreenshotClassifier` / `GarminActivityWindow`: reglas puras, con tests.
 - `GarminUsageChecker`: puente a `UsageStatsManager`.

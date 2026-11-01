@@ -8,7 +8,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="24dp">
+        android:padding="20dp">
 
         <TextView
             android:layout_width="match_parent"
@@ -18,27 +18,258 @@
             android:textSize="28sp"
             android:textStyle="bold" />
 
-        <TextView
+        <!-- Form Score as an RPG level -->
+        <LinearLayout
+            android:id="@+id/formCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/bg_card"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:id="@+id/levelBadge"
+                    android:layout_width="76dp"
+                    android:layout_height="76dp"
+                    android:background="@drawable/bg_level_badge"
+                    android:gravity="center"
+                    android:importantForAccessibility="yes"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:importantForAccessibility="no"
+                        android:letterSpacing="0.1"
+                        android:text="@string/form_level_prefix"
+                        android:textAllCaps="true"
+                        android:textColor="@color/cream_card"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/levelNumber"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:importantForAccessibility="no"
+                        android:includeFontPadding="false"
+                        android:textColor="@color/cream_card"
+                        android:textSize="30sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/levelTitle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/seed"
+                        android:textSize="24sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/formScoreValue"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/ink"
+                        android:textSize="16sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <ProgressBar
+                android:id="@+id/levelProgress"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="8dp"
+                android:layout_marginTop="14dp"
+                android:importantForAccessibility="no"
+                android:max="100"
+                android:maxHeight="8dp"
+                android:minHeight="8dp"
+                android:progressDrawable="@drawable/progress_level" />
+
+            <TextView
+                android:id="@+id/levelHint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:textColor="@color/ink_muted"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/gravityNote"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/ink_muted"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <!-- Last 30 days: bar height is effort, rest days stay empty -->
+        <LinearLayout
+            android:id="@+id/chartCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:text="@string/monitor_description"
-            android:textSize="16sp" />
+            android:background="@drawable/bg_card"
+            android:orientation="vertical"
+            android:padding="16dp">
 
-        <Switch
-            android:id="@+id/monitorSwitch"
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:letterSpacing="0.1"
+                android:text="@string/chart_title"
+                android:textAllCaps="true"
+                android:textColor="@color/ink_muted"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/chartSummary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/ink"
+                android:textSize="15sp" />
+
+            <dev.juliansaratsola.micoachfitness.ConsistencyChart
+                android:id="@+id/consistencyChart"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <View
+                    android:layout_width="10dp"
+                    android:layout_height="10dp"
+                    android:background="@drawable/bg_dot"
+                    android:backgroundTint="@color/seed"
+                    android:importantForAccessibility="no" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:text="@string/legend_trained"
+                    android:textColor="@color/ink_muted"
+                    android:textSize="12sp" />
+
+                <View
+                    android:layout_width="10dp"
+                    android:layout_height="10dp"
+                    android:layout_marginStart="16dp"
+                    android:background="@drawable/bg_dot"
+                    android:backgroundTint="@color/trench"
+                    android:importantForAccessibility="no" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:text="@string/legend_trench"
+                    android:textColor="@color/ink_muted"
+                    android:textSize="12sp" />
+
+                <View
+                    android:layout_width="10dp"
+                    android:layout_height="10dp"
+                    android:layout_marginStart="16dp"
+                    android:background="@drawable/bg_dot"
+                    android:backgroundTint="@color/cream_line"
+                    android:importantForAccessibility="no" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:text="@string/legend_rest"
+                    android:textColor="@color/ink_muted"
+                    android:textSize="12sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Effort points replace the old giant pace number -->
+        <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:minHeight="48dp"
-            android:text="@string/monitor_switch"
-            android:textSize="18sp" />
+            android:layout_marginTop="20dp"
+            android:letterSpacing="0.1"
+            android:text="@string/home_last_workout"
+            android:textAllCaps="true"
+            android:textColor="@color/ink_muted"
+            android:textSize="12sp"
+            android:textStyle="bold" />
 
-        <TextView
-            android:id="@+id/statusText"
+        <dev.juliansaratsola.micoachfitness.EffortCardView
+            android:id="@+id/lastWorkoutCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:textSize="15sp" />
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/lastWorkoutEmpty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_card"
+            android:padding="16dp"
+            android:text="@string/home_last_workout_empty"
+            android:textColor="@color/ink_muted"
+            android:textSize="14sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:background="@drawable/bg_card"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/monitor_description"
+                android:textColor="@color/ink_muted"
+                android:textSize="14sp" />
+
+            <Switch
+                android:id="@+id/monitorSwitch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:minHeight="48dp"
+                android:text="@string/monitor_switch"
+                android:textColor="@color/ink"
+                android:textSize="18sp" />
+
+            <TextView
+                android:id="@+id/statusText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/ink_muted"
+                android:textSize="14sp" />
+        </LinearLayout>
     </LinearLayout>
 </ScrollView>

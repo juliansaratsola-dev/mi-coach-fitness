@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Base64
 import org.json.JSONArray
+import org.json.JSONException
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
@@ -50,13 +51,18 @@ class GeminiClient(private val context: Context, private val apiKey: String) {
 
     fun review(
         images: List<Uri>,
-        history: List<WorkoutRecord>,
+        historicalContext: String,
         todayIso: String,
         notes: String?,
         workoutData: String? = null
     ): JSONObject {
         val parts = JSONArray()
-        parts.put(JSONObject().put("text", CoachPrompt.userPrompt(history, todayIso, notes, workoutData, images.isNotEmpty())))
+        parts.put(
+            JSONObject().put(
+                "text",
+                CoachPrompt.userPrompt(historicalContext, todayIso, notes, workoutData, images.isNotEmpty())
+            )
+        )
         for (uri in images) {
             parts.put(
                 JSONObject().put(
@@ -84,11 +90,13 @@ class GeminiClient(private val context: Context, private val apiKey: String) {
             ?.optJSONObject("content")?.optJSONArray("parts")?.optJSONObject(0)
             ?.optString("text")
         if (text.isNullOrBlank()) throw CoachException("Gemini no devolvió contenido.")
-        return try {
-            JSONObject(text)
-        } catch (error: Exception) {
+        val review = try {
+            WorkoutJson.parseReviewResponse(text)
+        } catch (error: JSONException) {
             throw CoachException("Respuesta de Gemini no válida.")
         }
+        if (!WorkoutJson.hasReview(review)) throw CoachException("Respuesta de Gemini no válida.")
+        return review
     }
 
     /** Retries transient overload errors, then falls back to the next available model. */
