@@ -58,7 +58,11 @@ data class WorkoutRecord(
     val puntosEsfuerzo: Int = 0,
     val esDiaTrinchera: Boolean = false,
     val textoSensaciones: String = "",
-    val verdadPura: VerdadPuraReview = VerdadPuraReview()
+    val verdadPura: VerdadPuraReview = VerdadPuraReview(),
+    val tecnica: String = "",
+    val cardio: String = "",
+    val potenciaRendimiento: String = "",
+    val comparativaPoblacional: String = ""
 ) {
     fun paceText(): String = formatPace(paceSecPerKm)
 

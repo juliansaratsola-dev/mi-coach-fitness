@@ -49,6 +49,9 @@
     <string name="coach_notes_hint">Sensaciones (opcional): piernas pesadas, calor, lluvia, dolor…</string>
     <string name="coach_generate">Generar review</string>
     <string name="coach_generating">Analizando…</string>
+    <string name="coach_loading_cadence">Analizando tu cadencia…</string>
+    <string name="coach_loading_history">Revisando el historial…</string>
+    <string name="coach_loading_metrics">Comparando métricas…</string>
     <string name="coach_clear">Vaciar capturas</string>
     <string name="coach_missing_key">Primero guarda tu API key de Gemini en la pantalla principal.</string>
     <string name="coach_error">No se pudo generar el review: %1$s</string>
@@ -61,6 +64,7 @@
     <string name="coach_chat_hint">Escribe un mensaje…</string>
     <string name="coach_chat_send">Enviar</string>
     <string name="coach_chat_sending">Enviando…</string>
+    <string name="coach_chat_typing">El coach está escribiendo…</string>
     <string name="coach_chat_history_error">No se pudo leer la conversación guardada.</string>
     <string name="coach_chat_error">No se pudo enviar el mensaje: %1$s</string>
     <string name="coach_chat_user_message">Tu mensaje: %1$s</string>

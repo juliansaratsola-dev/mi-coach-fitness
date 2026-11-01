@@ -47,6 +47,21 @@ class WorkoutJsonTest {
     }
 
     @Test
+    fun mainBranchReviewFieldsRemainReadable() {
+        val json = JSONObject(
+            """{"puntuacion_general":8,"headline":"Rodaje estable","tecnica":"Cadencia estable","cardio":"FC controlada","potencia_rendimiento":"Ritmo parejo","comparativa_poblacional":"Sin referencia fiable","sugerencias_proximo_entreno":["Descansa"]}"""
+        )
+        val record = WorkoutJson.parse(json)
+        assertEquals(8, record.overallScore)
+        assertEquals("Cadencia estable", record.tecnica)
+        assertEquals("FC controlada", record.cardio)
+        assertEquals("Ritmo parejo", record.potenciaRendimiento)
+        assertEquals("Sin referencia fiable", record.comparativaPoblacional)
+        assertEquals(listOf("Descansa"), record.suggestions)
+        assertTrue(record.hasLegacyReview())
+    }
+
+    @Test
     fun userAgeOnlyAffectsTheBackfill() {
         assertTrue(WorkoutJson.parse(legacy(), 60).puntosEsfuerzo > WorkoutJson.parse(legacy(), 20).puntosEsfuerzo)
         assertEquals(WorkoutJson.parse(stored(123), 20).puntosEsfuerzo, WorkoutJson.parse(stored(123), 60).puntosEsfuerzo)

@@ -64,7 +64,7 @@ object WorkoutJson {
             ascentM = metrics.num("ascentM")?.toInt(),
             anaerobicTe = metrics.num("anaerobicTe"),
             totalKcal = metrics.num("totalKcal")?.toInt(),
-            overallScore = json.optInt("overallScore", 0).coerceIn(0, 10),
+            overallScore = json.optInt("overallScore", json.optInt("puntuacion_general", 0)).coerceIn(0, 10),
             headline = json.str("headline"),
             sections = (0 until sections.length()).mapNotNull { i ->
                 sections.optJSONObject(i)?.let {
@@ -77,23 +77,33 @@ object WorkoutJson {
                 }
             },
             comparison = json.str("comparison"),
-            suggestions = json.optJSONArray("suggestions").strings(),
+            suggestions = (json.optJSONArray("suggestions")
+                ?: json.optJSONArray("sugerencias_proximo_entreno")).strings(),
             followUpQuestions = json.optJSONArray("followUpQuestions").strings(),
             puntosEsfuerzo = storedPoints ?: backfilled?.points ?: 0,
             esDiaTrinchera = if (storedPoints != null) json.optBoolean(KEY_TRENCH_DAY, false) else backfilled?.isTrenchDay == true,
             textoSensaciones = feelings,
-            verdadPura = reviewOf(json)
+            verdadPura = reviewOf(json),
+            tecnica = json.str("tecnica"),
+            cardio = json.str("cardio"),
+            potenciaRendimiento = json.str("potencia_rendimiento"),
+            comparativaPoblacional = json.str("comparativa_poblacional")
         )
     }
 
     /** The five "Verdad Pura" texts of a Gemini response (or stored workout); missing ones become empty. */
-    fun reviewOf(json: JSONObject): VerdadPuraReview = VerdadPuraReview(
-        tecnica = json.str(KEY_TECHNIQUE).trim(),
-        cardioYEsfuerzo = json.str(KEY_CARDIO).trim(),
-        potenciaYConsistencia = json.str(KEY_POWER).trim(),
-        comparativaMeritocratica = json.str(KEY_COMPARISON).trim(),
-        veredictoTrinchera = json.str(KEY_VERDICT).trim()
-    )
+    fun reviewOf(json: JSONObject): VerdadPuraReview {
+        if (json.has("overallScore") || json.has("puntuacion_general") || json.has("headline") || json.has("sections")) {
+            return VerdadPuraReview()
+        }
+        return VerdadPuraReview(
+            tecnica = json.str(KEY_TECHNIQUE).trim(),
+            cardioYEsfuerzo = json.str(KEY_CARDIO).trim(),
+            potenciaYConsistencia = json.str(KEY_POWER).trim(),
+            comparativaMeritocratica = json.str(KEY_COMPARISON).trim(),
+            veredictoTrinchera = json.str(KEY_VERDICT).trim()
+        )
+    }
 
     /**
      * Makes sure [raw] has a usable workout date. A valid ISO date that is not after [fallbackDate] is kept; anything

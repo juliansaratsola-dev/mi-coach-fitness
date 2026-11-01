@@ -17,7 +17,11 @@ class CoachException(message: String, val retryable: Boolean = false, val modelU
 /** Gemini REST client for structured workout reviews and contextual chat. */
 class GeminiClient(private val context: Context, private val apiKey: String) {
 
-    fun chat(history: List<WorkoutRecord>, conversation: List<CoachChatMessage>): String {
+    fun chat(
+        history: List<WorkoutRecord>,
+        conversation: List<CoachChatMessage>,
+        latestAnalysis: JSONObject? = null
+    ): String {
         val contents = JSONArray()
         conversation.takeLast(MAX_CHAT_MESSAGES).forEach { message ->
             contents.put(
@@ -31,7 +35,10 @@ class GeminiClient(private val context: Context, private val apiKey: String) {
                 "systemInstruction",
                 JSONObject().put(
                     "parts",
-                    JSONArray().put(JSONObject().put("text", CoachPrompt.chatSystemInstruction(history)))
+                    JSONArray().put(JSONObject().put(
+                        "text",
+                        CoachPrompt.chatSystemInstruction(history, latestAnalysisJson = latestAnalysis?.toString())
+                    ))
                 )
             )
             .put("contents", contents)

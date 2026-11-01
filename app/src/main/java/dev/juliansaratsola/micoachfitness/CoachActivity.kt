@@ -7,6 +7,8 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.view.View
 import android.text.InputType
@@ -14,6 +16,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
@@ -35,17 +38,22 @@ class CoachActivity : Activity() {
     private lateinit var pendingText: TextView
     private lateinit var notesInput: EditText
     private lateinit var generateButton: Button
+    private lateinit var loadingContainer: LinearLayout
+    private lateinit var loadingText: TextView
     private lateinit var reviewContainer: LinearLayout
     private lateinit var chatMessagesContainer: LinearLayout
     private lateinit var chatInput: EditText
     private lateinit var chatSendButton: Button
     private lateinit var pageScroll: ScrollView
     private var conversation = emptyList<CoachChatMessage>()
+    private var pendingChatMessage: String? = null
     private var busy = false
     private var chatBusy = false
     private var autoGenerate = false
     private var autoHealth = false
     private lateinit var healthButton: Button
+    private val loadingHandler = Handler(Looper.getMainLooper())
+    private var loadingRunnable: Runnable? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -69,6 +77,11 @@ class CoachActivity : Activity() {
         handleIntent(intent)
         refresh()
         runPendingAutoGenerate()
+    }
+
+    override fun onDestroy() {
+        loadingRunnable?.let(loadingHandler::removeCallbacks)
+        super.onDestroy()
     }
 
     private fun runPendingAutoGenerate() {
@@ -101,7 +114,13 @@ class CoachActivity : Activity() {
         root.addView(text(getString(R.string.coach_title), 26f, bold = true, color = getColor(R.color.seed)))
         pendingText = text("", 16f).apply { setPadding(0, dp(12), 0, dp(8)) }
         root.addView(pendingText)
-        notesInput = EditText(this).apply { hint = getString(R.string.coach_notes_hint) }
+        notesInput = EditText(this).apply {
+            hint = getString(R.string.coach_notes_hint)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            minLines = 2
+            maxLines = 6
+            gravity = Gravity.TOP
+        }
         root.addView(notesInput)
         val multiplier = String.format(Locale.getDefault(), "%.1f", EffortCalculator.TRENCH_MULTIPLIER)
         root.addView(text(getString(R.string.coach_notes_help, multiplier), 12f, color = getColor(R.color.ink_muted)).apply {
@@ -112,6 +131,17 @@ class CoachActivity : Activity() {
             setOnClickListener { generate() }
         }
         root.addView(generateButton)
+        loadingText = text("", 14f, color = Color.GRAY)
+        loadingContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            visibility = View.GONE
+        }
+        loadingContainer.addView(ProgressBar(this).apply { isIndeterminate = true }, LinearLayout.LayoutParams(dp(28), dp(28)).apply {
+            marginEnd = dp(8)
+        })
+        loadingContainer.addView(loadingText)
+        root.addView(loadingContainer)
         healthButton = Button(this).apply {
             text = getString(R.string.hc_button)
             setOnClickListener { chooseHealthSession() }
@@ -153,7 +183,15 @@ class CoachActivity : Activity() {
         }
         composer.addView(chatSendButton)
         root.addView(composer)
-        pageScroll = ScrollView(this).apply { addView(root) }
+        pageScroll = ScrollView(this).apply {
+            isFillViewport = true
+            addView(root)
+        }
+        chatInput.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) chatInput.post {
+                chatInput.requestRectangleOnScreen(android.graphics.Rect(0, 0, chatInput.width, chatInput.height), true)
+            }
+        }
         BottomNav.attach(this, pageScroll, BottomNav.Tab.COACH)
     }
 
@@ -178,6 +216,28 @@ class CoachActivity : Activity() {
         }
         renderChatMessages()
         updateChatControls()
+    }
+
+    private fun startReviewLoading() {
+        val messages = listOf(
+            getString(R.string.coach_loading_cadence),
+            getString(R.string.coach_loading_history),
+            getString(R.string.coach_loading_metrics)
+        )
+        loadingContainer.visibility = View.VISIBLE
+        fun updateMessage() {
+            if (!busy || isDestroyed) return
+            loadingText.text = messages.random()
+            loadingRunnable = Runnable { updateMessage() }
+            loadingHandler.postDelayed(loadingRunnable!!, 2_000L)
+        }
+        updateMessage()
+    }
+
+    private fun stopReviewLoading() {
+        loadingRunnable?.let(loadingHandler::removeCallbacks)
+        loadingRunnable = null
+        if (::loadingContainer.isInitialized) loadingContainer.visibility = View.GONE
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -263,6 +323,7 @@ class CoachActivity : Activity() {
         healthButton.isEnabled = false
         updateChatControls()
         generateButton.text = getString(R.string.coach_generating)
+        startReviewLoading()
         val notes = notesInput.text.toString()
         val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
         Thread {
@@ -290,6 +351,7 @@ class CoachActivity : Activity() {
             }
             runOnUiThread {
                 busy = false
+                stopReviewLoading()
                 generateButton.text = getString(R.string.coach_generate)
                 outcome.onSuccess {
                     if (!fromHealth) prefs.clearPendingCaptures()
@@ -316,14 +378,22 @@ class CoachActivity : Activity() {
         }
         val pendingConversation = conversation + CoachChatMessage(CoachChatRole.USER, message)
         chatBusy = true
+        pendingChatMessage = message
         updateChatControls()
+        renderChatMessages()
+        pageScroll.post { pageScroll.fullScroll(View.FOCUS_DOWN) }
         Thread {
             val outcome = runCatching {
-                GeminiClient(applicationContext, key).chat(store.all(), pendingConversation)
+                GeminiClient(applicationContext, key).chat(
+                    store.all(),
+                    pendingConversation,
+                    store.latestAnalysis()
+                )
             }
             runOnUiThread {
                 chatBusy = false
                 if (isDestroyed) return@runOnUiThread
+                pendingChatMessage = null
                 outcome.onSuccess { answer ->
                     conversation = (pendingConversation + CoachChatMessage(CoachChatRole.COACH, answer)).takeLast(40)
                     chatStore.save(conversation)
@@ -337,6 +407,7 @@ class CoachActivity : Activity() {
                         Toast.LENGTH_LONG
                     ).show()
                 }
+                renderChatMessages()
                 updateChatControls()
             }
         }.start()
@@ -365,6 +436,35 @@ class CoachActivity : Activity() {
                 }
             }
             row.addView(bubble, LinearLayout.LayoutParams((resources.displayMetrics.widthPixels * 0.78f).toInt(), LinearLayout.LayoutParams.WRAP_CONTENT))
+            chatMessagesContainer.addView(row)
+        }
+        pendingChatMessage?.let { message ->
+            val row = LinearLayout(this).apply {
+                gravity = Gravity.END
+                setPadding(0, (4 * density).toInt(), 0, (4 * density).toInt())
+            }
+            val bubble = text(message, 15f).apply {
+                background = GradientDrawable().apply {
+                    setColor(Color.rgb(232, 240, 254))
+                    cornerRadius = 16 * density
+                }
+                setPadding((12 * density).toInt(), (10 * density).toInt(), (12 * density).toInt(), (10 * density).toInt())
+            }
+            row.addView(
+                bubble,
+                LinearLayout.LayoutParams((resources.displayMetrics.widthPixels * 0.78f).toInt(), LinearLayout.LayoutParams.WRAP_CONTENT)
+            )
+            chatMessagesContainer.addView(row)
+        }
+        if (chatBusy) {
+            val row = LinearLayout(this).apply {
+                gravity = Gravity.START
+                setPadding(0, (4 * density).toInt(), 0, (4 * density).toInt())
+            }
+            val bubble = text(getString(R.string.coach_chat_typing), 15f, color = Color.GRAY).apply {
+                setPadding((12 * density).toInt(), (10 * density).toInt(), (12 * density).toInt(), (10 * density).toInt())
+            }
+            row.addView(bubble)
             chatMessagesContainer.addView(row)
         }
     }
@@ -469,6 +569,15 @@ class CoachActivity : Activity() {
         if (record.followUpQuestions.isNotEmpty()) {
             c.addView(text(getString(R.string.coach_followup), 17f, bold = true).apply { setPadding(0, 24, 0, 4) })
             record.followUpQuestions.forEach { c.addView(text("• $it", 15f)) }
+        }
+        listOf(
+            "Técnica" to record.tecnica,
+            "Cardio" to record.cardio,
+            "Potencia y rendimiento" to record.potenciaRendimiento,
+            "Comparativa poblacional" to record.comparativaPoblacional
+        ).filter { it.second.isNotBlank() }.forEach { (title, review) ->
+            c.addView(text(title, 17f, bold = true).apply { setPadding(0, 24, 0, 4) })
+            c.addView(text(review, 15f))
         }
     }
 

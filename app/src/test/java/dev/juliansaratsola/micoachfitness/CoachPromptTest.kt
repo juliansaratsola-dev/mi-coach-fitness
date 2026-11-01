@@ -31,7 +31,8 @@ class CoachPromptTest {
 
     @Test
     fun emptyHistoryIsStated() {
-        val prompt = CoachPrompt.userPrompt(HistoricalContext.build(emptyList(), today), "2026-10-31")
+        val context = HistoricalContext.build(emptyList(), today)
+        val prompt = CoachPrompt.userPrompt(context, "2026-10-31") + CoachPrompt.reviewSystemInstruction(emptyList(), today)
         assertTrue(prompt.contains("sin entrenamientos previos"))
         assertTrue(prompt.contains("FORM SCORE ACTUAL: 0"))
     }
@@ -43,6 +44,7 @@ class CoachPromptTest {
         val prompt = CoachPrompt.userPrompt(context, "2026-10-31", "tibias bien")
         assertTrue(prompt.contains(context.trim()))
         assertTrue(prompt.contains("esfuerzo 95 pts"))
+        assertTrue(CoachPrompt.reviewSystemInstruction(history, today).contains("2026-10-19"))
         assertTrue(prompt.contains("ritmo 5:12/km"))
         assertTrue(prompt.contains("Fecha de hoy: 2026-10-31."))
         assertTrue(prompt.contains("Mis sensaciones de hoy: tibias bien"))
@@ -102,6 +104,13 @@ class CoachPromptTest {
     }
 
     @Test
+    fun historyIsLimited() {
+        val history = (1..20).map { record("2026-09-%02d".format(it), 300, 150, 7) }
+        val prompt = CoachPrompt.reviewSystemInstruction(history)
+        assertEquals(HistoricalContext.SESSION_LIMIT, datedLines(prompt).size)
+    }
+
+    @Test
     fun metricGroupsListOnlyAvailableValues() {
         val base = record("2026-10-30", 328, 147, 7)
         val full = base.copy(
@@ -118,6 +127,8 @@ class CoachPromptTest {
     fun chatContextIncludesLatestLegacyReviewAndAvoidsInventedBenchmarks() {
         val latest = legacyRecord("2026-10-30", 328, 147, 7).copy(
             headline = "Rodaje estable",
+            tecnica = "Técnica constante.",
+            cardio = "Cardio controlado.",
             maxPowerW = 340,
             verticalRatioPct = 8.2,
             comparison = "Ritmo similar a la sesión anterior.",
@@ -130,6 +141,8 @@ class CoachPromptTest {
         assertTrue(prompt.contains("Ratio vertical: 8.2 %"))
         assertTrue(prompt.contains("Ritmo similar a la sesión anterior."))
         assertTrue(prompt.contains("Prioriza el descanso."))
+        assertTrue(prompt.contains("Técnica: Técnica constante."))
+        assertTrue(prompt.contains("Cardio: Cardio controlado."))
         assertTrue(prompt.contains("No inventes métricas, edad, peso"))
     }
 
@@ -169,5 +182,13 @@ class CoachPromptTest {
         val prompt = CoachPrompt.chatSystemInstruction(emptyList(), today)
         assertTrue(prompt.contains("Todavía no hay entrenamientos guardados"))
         assertFalse(prompt.contains("Review más reciente"))
+    }
+
+    @Test
+    fun chatContextIncludesExactMainAnalysisJson() {
+        val json = """{"puntuacion_general":8,"tecnica":"cadencia estable"}"""
+        val prompt = CoachPrompt.chatSystemInstruction(emptyList(), latestAnalysisJson = json)
+        assertTrue(prompt.contains("ANÁLISIS PRINCIPAL EN JSON"))
+        assertTrue(prompt.contains(json))
     }
 }

@@ -22,6 +22,13 @@ class WorkoutStore(context: Context) {
         }
     }
 
+    @Synchronized
+    fun latestAnalysis(): JSONObject? {
+        val array = readArray()
+        if (array.length() == 0) return null
+        return JSONObject(array.getJSONObject(array.length() - 1).toString())
+    }
+
     /**
      * Saves a reviewed workout. Its effort points, trench-day flag and the user's [notes] ("sensaciones") are
      * computed here and stored with it, so the history keeps the score it had when it was recorded.
@@ -61,4 +68,3 @@ class WorkoutStore(context: Context) {
         private const val FILE_NAME = "workouts.json"
     }
 }
-
