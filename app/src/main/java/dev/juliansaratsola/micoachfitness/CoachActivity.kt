@@ -22,7 +22,6 @@ import android.widget.TextView
 import android.widget.Toast
 import org.json.JSONException
 import java.io.IOException
-import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -41,7 +40,6 @@ class CoachActivity : Activity() {
     private lateinit var loadingContainer: LinearLayout
     private lateinit var loadingText: TextView
     private lateinit var reviewContainer: LinearLayout
-    private lateinit var historyButton: Button
     private lateinit var chatMessagesContainer: LinearLayout
     private lateinit var chatInput: EditText
     private lateinit var chatSendButton: Button
@@ -53,6 +51,7 @@ class CoachActivity : Activity() {
     private var chatBusy = false
     private var autoGenerate = false
     private var autoHealth = false
+    private var observedResetVersion = 0L
     private lateinit var healthButton: Button
     private val loadingHandler = Handler(Looper.getMainLooper())
     private var loadingRunnable: Runnable? = null
@@ -60,6 +59,7 @@ class CoachActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = MonitorPreferences(this)
+        observedResetVersion = prefs.resetVersion
         store = WorkoutStore(this)
         chatStore = CoachChatStore(this)
         try {
@@ -160,11 +160,6 @@ class CoachActivity : Activity() {
             setPadding(0, dp(16), 0, 0)
         }
         root.addView(reviewContainer)
-        historyButton = Button(this).apply {
-            visibility = View.GONE
-            setOnClickListener { showHistoryManager() }
-        }
-        root.addView(historyButton)
         root.addView(text(getString(R.string.coach_chat_title), 22f, bold = true, color = getColor(R.color.seed)).apply {
             setPadding(0, dp(32), 0, dp(8))
         })
@@ -204,7 +199,20 @@ class CoachActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        if (::pendingText.isInitialized) refresh()
+        if (::pendingText.isInitialized) {
+            if (observedResetVersion != prefs.resetVersion) {
+                observedResetVersion = prefs.resetVersion
+                notesInput.setText("")
+                pendingChatMessage = null
+            }
+            try {
+                conversation = chatStore.all()
+            } catch (error: JSONException) {
+                conversation = emptyList()
+                Toast.makeText(this, R.string.coach_chat_history_error, Toast.LENGTH_LONG).show()
+            }
+            refresh()
+        }
     }
 
     private fun refresh() {
@@ -217,18 +225,14 @@ class CoachActivity : Activity() {
             reviewContainer.removeAllViews()
             try {
                 currentHistory = store.all()
-                historyButton.visibility = if (currentHistory.isEmpty()) View.GONE else View.VISIBLE
-                historyButton.text = getString(R.string.coach_history_count, currentHistory.size)
                 if (currentHistory.isNotEmpty()) {
                     renderRecord(currentHistory.last(), currentHistory.dropLast(1).size)
                 }
             } catch (error: IOException) {
                 currentHistory = emptyList()
-                historyButton.visibility = View.GONE
                 Toast.makeText(this, R.string.coach_history_error, Toast.LENGTH_LONG).show()
             } catch (error: JSONException) {
                 currentHistory = emptyList()
-                historyButton.visibility = View.GONE
                 Toast.makeText(this, R.string.coach_history_error, Toast.LENGTH_LONG).show()
             }
         }
@@ -344,6 +348,7 @@ class CoachActivity : Activity() {
         startReviewLoading()
         val notes = notesInput.text.toString()
         val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+        val resetVersion = prefs.resetVersion
         Thread {
             val outcome = runCatching {
                 if (fromHealth) {
@@ -358,19 +363,31 @@ class CoachActivity : Activity() {
                         "Fecha del entrenamiento: $sessionDate\n" + session.toPromptText()
                     )
                     raw.put("date", sessionDate)
-                    store.add(raw, sessionDate, notes)
-                    prefs.lastHealthSessionEnd = session.endMillis
-                    prefs.clearPendingCaptures()
+                    applyHealthConnectMetrics(raw, session)
+                    synchronized(MonitorPreferences.RESET_LOCK) {
+                        ensureNotReset(resetVersion)
+                        store.add(raw, sessionDate, notes)
+                        prefs.lastHealthSessionEnd = session.endMillis
+                        prefs.clearPendingCaptures()
+                    }
                 } else {
                     val raw = GeminiClient(applicationContext, key)
                         .review(uris, store.getHistoricalContextForAI(), today, notes)
-                    store.add(raw, today, notes)
+                    synchronized(MonitorPreferences.RESET_LOCK) {
+                        ensureNotReset(resetVersion)
+                        store.add(raw, today, notes)
+                    }
                 }
             }
             runOnUiThread {
                 busy = false
                 stopReviewLoading()
                 generateButton.text = getString(R.string.coach_generate)
+                if (prefs.resetVersion != resetVersion) {
+                    notesInput.setText("")
+                    refresh()
+                    return@runOnUiThread
+                }
                 outcome.onSuccess {
                     if (!fromHealth) prefs.clearPendingCaptures()
                     notesInput.setText("")
@@ -386,6 +403,35 @@ class CoachActivity : Activity() {
         }.start()
     }
 
+    private fun ensureNotReset(expectedVersion: Long) {
+        if (prefs.resetVersion != expectedVersion) {
+            throw CoachException(getString(R.string.coach_reset_interrupted))
+        }
+    }
+
+    private fun applyHealthConnectMetrics(raw: org.json.JSONObject, session: HealthSession) {
+        val metrics = raw.optJSONObject("metrics") ?: org.json.JSONObject().also { raw.put("metrics", it) }
+        fun put(key: String, value: Number?) {
+            if (value != null) metrics.put(key, value)
+        }
+        put("distanceKm", session.distanceM?.div(1000.0))
+        put("durationMin", session.durationMin)
+        put("paceSecPerKm", session.paceSecPerKm())
+        put("minHr", session.minHr)
+        put("avgHr", session.avgHr)
+        put("maxHr", session.maxHr)
+        put("powerW", session.avgPowerW)
+        put("maxPowerW", session.maxPowerW)
+        put("cadence", session.cadenceSpm)
+        put("maxCadence", session.maxCadenceSpm)
+        put("ascentM", session.elevationGainM)
+        put("activeKcal", session.activeKcal)
+        put("totalKcal", session.totalKcal)
+        put("avgSpeedKmh", session.avgSpeedKmh)
+        put("minSpeedKmh", session.minSpeedKmh)
+        put("maxSpeedKmh", session.maxSpeedKmh)
+    }
+
     private fun sendChatMessage() {
         val message = chatInput.text.toString().trim()
         if (message.isBlank() || busy || chatBusy) return
@@ -395,6 +441,7 @@ class CoachActivity : Activity() {
             return
         }
         val pendingConversation = conversation + CoachChatMessage(CoachChatRole.USER, message)
+        val resetVersion = prefs.resetVersion
         chatBusy = true
         pendingChatMessage = message
         updateChatControls()
@@ -412,10 +459,29 @@ class CoachActivity : Activity() {
                 chatBusy = false
                 if (isDestroyed) return@runOnUiThread
                 pendingChatMessage = null
+                if (prefs.resetVersion != resetVersion) {
+                    try {
+                        conversation = chatStore.all()
+                    } catch (error: JSONException) {
+                        conversation = emptyList()
+                        Toast.makeText(this, R.string.coach_chat_history_error, Toast.LENGTH_LONG).show()
+                    }
+                    renderChatMessages()
+                    updateChatControls()
+                    return@runOnUiThread
+                }
                 outcome.onSuccess { answer ->
-                    conversation = (pendingConversation + CoachChatMessage(CoachChatRole.COACH, answer)).takeLast(40)
-                    chatStore.save(conversation)
-                    chatInput.setText("")
+                    val updated = (pendingConversation + CoachChatMessage(CoachChatRole.COACH, answer)).takeLast(40)
+                    val saved = synchronized(MonitorPreferences.RESET_LOCK) {
+                        if (prefs.resetVersion != resetVersion) {
+                            false
+                        } else {
+                            chatStore.save(updated)
+                            conversation = updated
+                            true
+                        }
+                    }
+                    if (saved) chatInput.setText("") else conversation = chatStore.all()
                     renderChatMessages()
                     pageScroll.post { pageScroll.fullScroll(View.FOCUS_DOWN) }
                 }.onFailure {
@@ -603,96 +669,6 @@ class CoachActivity : Activity() {
             c.addView(text(title, 17f, bold = true).apply { setPadding(0, 24, 0, 4) })
             c.addView(text(review, 15f))
         }
-    }
-
-    private fun showHistoryManager() {
-        val history = currentHistory
-        if (history.isEmpty()) {
-            Toast.makeText(this, R.string.coach_history_empty, Toast.LENGTH_SHORT).show()
-            return
-        }
-        val indices = history.indices.reversed().toList()
-        val labels = indices.map { index ->
-            val record = history[index]
-            val points = NumberFormat.getIntegerInstance().format(record.puntosEsfuerzo)
-            "${record.headerText()} · ${getString(R.string.history_points, points)}"
-        }.toTypedArray()
-        android.app.AlertDialog.Builder(this)
-            .setTitle(R.string.coach_history)
-            .setItems(labels) { _, selected -> showHistoryDetails(indices[selected], history[indices[selected]]) }
-            .setNegativeButton(R.string.coach_close, null)
-            .show()
-    }
-
-    private fun showHistoryDetails(index: Int, record: WorkoutRecord) {
-        val details = buildString {
-            append(record.detailParts().joinToString(" · "))
-            append("\n").append(getString(R.string.effort_points_label)).append(": ").append(record.puntosEsfuerzo)
-            if (record.esDiaTrinchera) append(" · ").append(getString(R.string.legend_trench))
-            record.metricGroups().forEach { (title, items) ->
-                append("\n\n").append(title).append('\n')
-                items.forEach { append(it.first).append(": ").append(it.second).append('\n') }
-            }
-            if (record.hasLegacyReview()) {
-                if (record.headline.isNotBlank()) append("\n\n").append(record.headline)
-                record.sections.forEach {
-                    append("\n\n").append(it.title).append(" ").append(it.score).append("/10\n").append(it.review)
-                }
-                listOf(
-                    "Técnica" to record.tecnica,
-                    "Cardio" to record.cardio,
-                    "Potencia y rendimiento" to record.potenciaRendimiento,
-                    "Comparativa" to record.comparativaPoblacional,
-                    "Comparativa personal" to record.comparison
-                ).filter { it.second.isNotBlank() }.forEach { (title, body) ->
-                    append("\n\n").append(title).append('\n').append(body)
-                }
-                record.suggestions.forEach { append("\n\nSugerencia\n").append(it) }
-                record.followUpQuestions.forEach { append("\n\nSeguimiento\n").append(it) }
-            } else {
-                val review = record.verdadPura
-                listOf(
-                    getString(R.string.review_verdict) to review.veredictoTrinchera,
-                    getString(R.string.review_cardio) to review.cardioYEsfuerzo,
-                    getString(R.string.review_comparison) to review.comparativaMeritocratica,
-                    getString(R.string.review_consistency) to review.potenciaYConsistencia,
-                    getString(R.string.review_technique) to (if (record.technicalMetricsWarning) {
-                        getString(R.string.coach_technical_read_warning)
-                    } else {
-                        review.tecnica
-                    })
-                ).filter { it.second.isNotBlank() }.forEach { (title, body) ->
-                    append("\n\n").append(title).append('\n').append(body)
-                }
-            }
-            record.feelingsForPrompt()?.let { append("\n\n").append(getString(R.string.coach_notes_hint)).append(": ").append(it) }
-        }
-        android.app.AlertDialog.Builder(this)
-            .setTitle(record.headerText())
-            .setMessage(details.trim())
-            .setPositiveButton(R.string.coach_close, null)
-            .setNegativeButton(R.string.coach_history_delete) { _, _ ->
-                confirmDeleteHistoryRecord(index)
-            }
-            .show()
-    }
-
-    private fun confirmDeleteHistoryRecord(index: Int) {
-        android.app.AlertDialog.Builder(this)
-            .setTitle(R.string.coach_history_delete_confirm_title)
-            .setMessage(R.string.coach_history_delete_confirm)
-            .setNegativeButton(R.string.coach_close, null)
-            .setPositiveButton(R.string.coach_history_delete) { _, _ ->
-                try {
-                    store.deleteAt(index)
-                    refresh()
-                } catch (error: IOException) {
-                    Toast.makeText(this, R.string.coach_history_error, Toast.LENGTH_LONG).show()
-                } catch (error: JSONException) {
-                    Toast.makeText(this, R.string.coach_history_error, Toast.LENGTH_LONG).show()
-                }
-            }
-            .show()
     }
 
     private fun showCaptureManager() {

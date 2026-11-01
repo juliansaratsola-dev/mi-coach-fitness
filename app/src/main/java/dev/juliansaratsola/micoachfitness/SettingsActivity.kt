@@ -1,6 +1,7 @@
 package dev.juliansaratsola.micoachfitness
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -44,6 +45,9 @@ class SettingsActivity : Activity() {
         content.findViewById<TextView>(R.id.ageHelp).text =
             getString(R.string.age_help, EffortCalculator.DEFAULT_MAX_HR.toInt())
         content.findViewById<Button>(R.id.saveAgeButton).setOnClickListener { saveAge(ageInput) }
+        content.findViewById<Button>(R.id.resetAppButton).setOnClickListener {
+            confirmReset(keyInput, ageInput)
+        }
     }
 
     /** A blank field clears the age; anything else must be a plausible age or nothing is saved. */
@@ -63,6 +67,32 @@ class SettingsActivity : Activity() {
         }
         prefs.userAge = age
         Toast.makeText(this, R.string.age_saved, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun confirmReset(keyInput: EditText, ageInput: EditText) {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.reset_app_title)
+            .setMessage(R.string.reset_app_message)
+            .setNegativeButton(R.string.coach_close, null)
+            .setPositiveButton(R.string.reset_app_action) { _, _ ->
+                stopService(Intent(this, ScreenshotMonitorService::class.java))
+                getSystemService(android.app.NotificationManager::class.java)?.cancelAll()
+                val resetSucceeded = synchronized(MonitorPreferences.RESET_LOCK) {
+                    WorkoutStore(this).clear()
+                    val chatCleared = CoachChatStore(this).clear()
+                    val settingsCleared = prefs.resetLocalSettings()
+                    chatCleared && settingsCleared
+                }
+                keyInput.text.clear()
+                ageInput.text.clear()
+                Toast.makeText(
+                    this,
+                    if (resetSucceeded) R.string.reset_app_done else R.string.reset_app_failed,
+                    Toast.LENGTH_LONG
+                ).show()
+                refresh()
+            }
+            .show()
     }
 
     override fun onResume() {

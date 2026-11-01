@@ -63,7 +63,12 @@ data class WorkoutRecord(
     val cardio: String = "",
     val potenciaRendimiento: String = "",
     val comparativaPoblacional: String = "",
-    val technicalMetricsWarning: Boolean = false
+    val technicalMetricsWarning: Boolean = false,
+    val minHr: Int? = null,
+    val activeKcal: Int? = null,
+    val avgSpeedKmh: Double? = null,
+    val minSpeedKmh: Double? = null,
+    val maxSpeedKmh: Double? = null
 ) {
     fun paceText(): String = formatPace(paceSecPerKm)
 
@@ -104,11 +109,13 @@ data class WorkoutRecord(
                 "Distancia" to distanceKm?.let { "%.2f km".format(us, it) },
                 "Duración" to durationMin?.let { "%.0f min".format(us, it) },
                 "Ritmo medio" to paceSecPerKm?.let { "${formatPace(it)} /km" },
-                "Calorías" to totalKcal?.let { "$it kcal" }
+                "Calorías totales" to totalKcal?.let { "$it kcal" },
+                "Calorías activas" to activeKcal?.let { "$it kcal" }
             ),
             group(
                 "Cardio",
                 "FC media" to avgHr?.let { "$it ppm" },
+                "FC mínima" to minHr?.let { "$it ppm" },
                 "FC máxima" to maxHr?.let { "$it ppm" },
                 "TE aeróbico" to aerobicTe?.let { "%.1f".format(us, it) },
                 "TE anaeróbico" to anaerobicTe?.let { "%.1f".format(us, it) }
@@ -117,6 +124,12 @@ data class WorkoutRecord(
                 "Potencia",
                 "Potencia media" to powerW?.let { "$it W" },
                 "Potencia máxima" to maxPowerW?.let { "$it W" }
+            ),
+            group(
+                "Velocidad",
+                "Velocidad media" to avgSpeedKmh?.let { "%.1f km/h".format(us, it) },
+                "Velocidad mínima" to minSpeedKmh?.let { "%.1f km/h".format(us, it) },
+                "Velocidad máxima" to maxSpeedKmh?.let { "%.1f km/h".format(us, it) }
             ),
             group(
                 "Dinámica de carrera",
@@ -153,7 +166,11 @@ data class WorkoutRecord(
         if (esDiaTrinchera) parts += "DÍA DE TRINCHERA"
         avgHr?.let { parts += "FC media $it" }
         maxHr?.let { parts += "FC max $it" }
+        minHr?.let { parts += "FC min $it" }
         paceSecPerKm?.let { parts += "ritmo ${formatPace(it)}/km" }
+        avgSpeedKmh?.let { parts += "velocidad media %.1f km/h".format(us, it) }
+        minSpeedKmh?.let { parts += "velocidad mínima %.1f km/h".format(us, it) }
+        maxSpeedKmh?.let { parts += "velocidad máxima %.1f km/h".format(us, it) }
         cadence?.let { parts += "cadencia $it" }
         maxCadence?.let { parts += "cadencia máx. $it" }
         strideM?.let { parts += "zancada %.2f m".format(us, it) }
@@ -167,6 +184,7 @@ data class WorkoutRecord(
         aerobicTe?.let { parts += "TE aeróbico %.1f".format(us, it) }
         anaerobicTe?.let { parts += "TE anaeróbico %.1f".format(us, it) }
         totalKcal?.let { parts += "$it kcal" }
+        activeKcal?.let { parts += "$it kcal activas" }
         bodyBatteryImpact?.let { parts += "Body Battery $it" }
         feelingsForPrompt()?.let { parts += "sensaciones: \"$it\"" }
         return parts.joinToString(" | ")

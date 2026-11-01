@@ -97,7 +97,12 @@ object WorkoutJson {
             cardio = json.str("cardio"),
             potenciaRendimiento = json.str("potencia_rendimiento"),
             comparativaPoblacional = json.str("comparativa_poblacional"),
-            technicalMetricsWarning = json.optBoolean(KEY_TECHNICAL_WARNING, false)
+            technicalMetricsWarning = json.optBoolean(KEY_TECHNICAL_WARNING, false),
+            minHr = metrics.num("minHr")?.toInt(),
+            activeKcal = metrics.num("activeKcal")?.toInt(),
+            avgSpeedKmh = metrics.num("avgSpeedKmh"),
+            minSpeedKmh = metrics.num("minSpeedKmh"),
+            maxSpeedKmh = metrics.num("maxSpeedKmh")
         )
     }
 

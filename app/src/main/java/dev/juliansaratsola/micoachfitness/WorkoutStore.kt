@@ -54,6 +54,11 @@ class WorkoutStore(context: Context) {
         writeArray(array)
     }
 
+    @Synchronized
+    fun clear() {
+        file.delete()
+    }
+
     /** "Gravity" Form Score as of [today]: 30-day effort divided by (days since the last workout + 1). */
     fun calculateFormScore(today: LocalDate = LocalDate.now()): Double = FormScore.calculate(all(), today)
 

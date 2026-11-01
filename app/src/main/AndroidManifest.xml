@@ -60,7 +60,7 @@
             android:exported="false" />
 
         <activity
-            android:name=".WipActivity"
+            android:name=".HistoryActivity"
             android:exported="false" />
 
         <activity

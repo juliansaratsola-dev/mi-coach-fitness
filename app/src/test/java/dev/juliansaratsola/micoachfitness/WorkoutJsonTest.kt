@@ -164,6 +164,23 @@ class WorkoutJsonTest {
     }
 
     @Test
+    fun healthConnectMetricsAreStoredAndShownAsSessionData() {
+        val raw = JSONObject(
+            """{"date":"2026-10-30","type":"Carrera","metrics":{"durationMin":41,"minHr":132,"avgHr":157,"maxHr":171,"avgSpeedKmh":11.4,"minSpeedKmh":2.1,"maxSpeedKmh":13.8,"activeKcal":467,"totalKcal":524}}"""
+        )
+        val record = WorkoutJson.parse(raw)
+        assertEquals(132, record.minHr)
+        assertEquals(467, record.activeKcal)
+        assertEquals(11.4, record.avgSpeedKmh!!, 0.001)
+        assertEquals(2.1, record.minSpeedKmh!!, 0.001)
+        assertEquals(13.8, record.maxSpeedKmh!!, 0.001)
+        val groups = record.metricGroups().flatMap { it.second }.toMap()
+        assertEquals("132 ppm", groups["FC mínima"])
+        assertEquals("11.4 km/h", groups["Velocidad media"])
+        assertEquals("467 kcal", groups["Calorías activas"])
+    }
+
+    @Test
     fun applyEffortWritesTheThreePersistedKeys() {
         val raw = JSONObject("""{"date":"2026-10-30","type":"Carrera","metrics":{"durationMin":50,"avgHr":160,"maxHr":175}}""")
         WorkoutJson.applyEffort(raw, "Mucho calor y piernas pesadas", null)
