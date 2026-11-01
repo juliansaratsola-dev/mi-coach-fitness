@@ -16,7 +16,11 @@ class CoachException(message: String, val retryable: Boolean = false, val modelU
 /** Gemini REST client for structured workout reviews and contextual chat. */
 class GeminiClient(private val context: Context, private val apiKey: String) {
 
-    fun chat(history: List<WorkoutRecord>, conversation: List<CoachChatMessage>): String {
+    fun chat(
+        history: List<WorkoutRecord>,
+        conversation: List<CoachChatMessage>,
+        latestAnalysis: JSONObject? = null
+    ): String {
         val contents = JSONArray()
         conversation.takeLast(MAX_CHAT_MESSAGES).forEach { message ->
             contents.put(
@@ -30,7 +34,7 @@ class GeminiClient(private val context: Context, private val apiKey: String) {
                 "systemInstruction",
                 JSONObject().put(
                     "parts",
-                    JSONArray().put(JSONObject().put("text", CoachPrompt.chatSystemInstruction(history)))
+                    JSONArray().put(JSONObject().put("text", CoachPrompt.chatSystemInstruction(history, latestAnalysis?.toString())))
                 )
             )
             .put("contents", contents)
@@ -56,7 +60,7 @@ class GeminiClient(private val context: Context, private val apiKey: String) {
         workoutData: String? = null
     ): JSONObject {
         val parts = JSONArray()
-        parts.put(JSONObject().put("text", CoachPrompt.userPrompt(history, todayIso, notes, workoutData, images.isNotEmpty())))
+        parts.put(JSONObject().put("text", CoachPrompt.userPrompt(todayIso, notes, workoutData, images.isNotEmpty())))
         for (uri in images) {
             parts.put(
                 JSONObject().put(
@@ -68,7 +72,7 @@ class GeminiClient(private val context: Context, private val apiKey: String) {
         val body = JSONObject()
             .put(
                 "systemInstruction",
-                JSONObject().put("parts", JSONArray().put(JSONObject().put("text", CoachPrompt.SYSTEM_INSTRUCTION)))
+                JSONObject().put("parts", JSONArray().put(JSONObject().put("text", CoachPrompt.reviewSystemInstruction(history))))
             )
             .put("contents", JSONArray().put(JSONObject().put("role", "user").put("parts", parts)))
             .put(

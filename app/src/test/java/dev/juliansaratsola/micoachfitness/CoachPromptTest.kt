@@ -24,7 +24,7 @@ class CoachPromptTest {
 
     @Test
     fun emptyHistoryIsStated() {
-        val prompt = CoachPrompt.userPrompt(emptyList(), "2026-10-31")
+        val prompt = CoachPrompt.reviewSystemInstruction(emptyList())
         assertTrue(prompt.contains("sin entrenamientos previos"))
         assertNull(CoachPrompt.trendSummary(emptyList()))
     }
@@ -32,7 +32,7 @@ class CoachPromptTest {
     @Test
     fun historyAndTrendsAreIncluded() {
         val history = listOf(record("2026-10-17", 298, 157, 8), record("2026-10-19", 312, 157, 9))
-        val prompt = CoachPrompt.userPrompt(history, "2026-10-31", "tibias bien")
+        val prompt = CoachPrompt.reviewSystemInstruction(history) + CoachPrompt.userPrompt("2026-10-31", "tibias bien")
         assertTrue(prompt.contains("2026-10-19"))
         assertTrue(prompt.contains("ritmo 5:12/km"))
         assertTrue(prompt.contains("cardio=9"))
@@ -44,7 +44,8 @@ class CoachPromptTest {
     @Test
     fun historyIsLimited() {
         val history = (1..20).map { record("2026-09-%02d".format(it), 300, 150, 7) }
-        val prompt = CoachPrompt.userPrompt(history, "2026-10-31")
+        val prompt = CoachPrompt.reviewSystemInstruction(history)
+        assertEquals(5, CoachPrompt.HISTORY_LIMIT)
         assertEquals(CoachPrompt.HISTORY_LIMIT, prompt.lines().count { it.startsWith("- ") })
     }
 
@@ -78,5 +79,23 @@ class CoachPromptTest {
         assertTrue(prompt.contains("Ritmo similar a la sesión anterior."))
         assertTrue(prompt.contains("Prioriza el descanso."))
         assertTrue(prompt.contains("No inventes métricas, edad, peso"))
+    }
+
+    @Test
+    fun chatContextIncludesExactMainAnalysisJson() {
+        val json = """{"puntuacion_general":8,"tecnica":"cadencia estable"}"""
+        val prompt = CoachPrompt.chatSystemInstruction(emptyList(), json)
+        assertTrue(prompt.contains("ANÁLISIS PRINCIPAL EN JSON"))
+        assertTrue(prompt.contains(json))
+    }
+
+    @Test
+    fun reviewSchemaRequiresTheStructuredFeedbackFields() {
+        listOf(
+            "puntuacion_general", "tecnica", "cardio", "potencia_rendimiento",
+            "comparativa_poblacional", "sugerencias_proximo_entreno"
+        ).forEach { field ->
+            assertTrue(CoachPrompt.RESPONSE_SCHEMA.contains("\"$field\""))
+        }
     }
 }

@@ -67,7 +67,8 @@
             android:name=".CoachActivity"
             android:exported="false"
             android:label="@string/coach_title"
-            android:launchMode="singleTop" />
+            android:launchMode="singleTop"
+            android:windowSoftInputMode="adjustResize" />
 
         <activity-alias
             android:name=".HealthPermissionRationale"
