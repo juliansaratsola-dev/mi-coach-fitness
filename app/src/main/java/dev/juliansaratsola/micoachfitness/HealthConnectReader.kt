@@ -54,6 +54,7 @@ class HealthConnectReader(private val context: Context) {
             hc.readRecords(request, executor, receiver)
         } ?: return emptyList()
         return response.records
+            .filter { it.metadata.dataOrigin.packageName == HealthSession.GARMIN_PACKAGE }
             .filter { it.endTime.toEpochMilli() > afterMillis }
             .sortedByDescending { it.endTime }
             .take(limit)

@@ -26,6 +26,9 @@ data class HealthSession(
 ) {
     val durationMin: Double get() = (endMillis - startMillis) / 60_000.0
 
+    /** True only for activities written by Garmin Connect, not by other apps or phone auto-detection. */
+    fun isGarminActivity(): Boolean = origin == GARMIN_PACKAGE
+
     fun typeName(): String = when (exerciseType) {
         RUNNING -> "Carrera"
         RUNNING_TREADMILL -> "Carrera en cinta"
@@ -91,16 +94,11 @@ data class HealthSession(
     }
 
     companion object {
-        private const val MIN_DISTANCE_M = 500.0
+        const val GARMIN_PACKAGE = GarminActivityWindow.GARMIN_PACKAGE
 
-        /** Latest session with real distance (a run, ride or walk); falls back to the latest of any kind. */
-        fun pickBest(sessions: List<HealthSession>): HealthSession? {
-            val newestFirst = sessions.sortedByDescending { it.endMillis }
-            val real = newestFirst.filter { (it.distanceM ?: 0.0) >= MIN_DISTANCE_M }
-            return real.firstOrNull { it.origin?.contains("garmin", ignoreCase = true) == true }
-                ?: real.firstOrNull()
-                ?: newestFirst.firstOrNull()
-        }
+        /** Latest workout recorded by Garmin Connect; sessions from other apps (phone auto-detection) are ignored. */
+        fun pickBest(sessions: List<HealthSession>): HealthSession? =
+            sessions.filter { it.isGarminActivity() }.maxByOrNull { it.endMillis }
 
         const val RUNNING = 56
         const val RUNNING_TREADMILL = 57
