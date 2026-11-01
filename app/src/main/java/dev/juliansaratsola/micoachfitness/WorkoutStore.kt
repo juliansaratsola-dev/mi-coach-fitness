@@ -20,6 +20,13 @@ class WorkoutStore(context: Context) {
     }
 
     @Synchronized
+    fun latestAnalysis(): JSONObject? {
+        val array = readArray()
+        if (array.length() == 0) return null
+        return JSONObject(array.getJSONObject(array.length() - 1).toString())
+    }
+
+    @Synchronized
     fun add(raw: JSONObject, fallbackDate: String): WorkoutRecord {
         if (raw.isNull("date") || raw.optString("date").isBlank()) raw.put("date", fallbackDate)
         val record = parse(raw)
@@ -69,7 +76,7 @@ class WorkoutStore(context: Context) {
                 ascentM = metrics.num("ascentM")?.toInt(),
                 anaerobicTe = metrics.num("anaerobicTe"),
                 totalKcal = metrics.num("totalKcal")?.toInt(),
-                overallScore = json.optInt("overallScore", 0).coerceIn(0, 10),
+                overallScore = json.optInt("overallScore", json.optInt("puntuacion_general", 0)).coerceIn(0, 10),
                 headline = json.optString("headline"),
                 sections = (0 until sections.length()).mapNotNull { i ->
                     sections.optJSONObject(i)?.let {
@@ -82,8 +89,13 @@ class WorkoutStore(context: Context) {
                     }
                 },
                 comparison = json.optString("comparison"),
-                suggestions = json.optJSONArray("suggestions").strings(),
-                followUpQuestions = json.optJSONArray("followUpQuestions").strings()
+                suggestions = (json.optJSONArray("suggestions")
+                    ?: json.optJSONArray("sugerencias_proximo_entreno")).strings(),
+                followUpQuestions = json.optJSONArray("followUpQuestions").strings(),
+                tecnica = json.optString("tecnica"),
+                cardio = json.optString("cardio"),
+                potenciaRendimiento = json.optString("potencia_rendimiento"),
+                comparativaPoblacional = json.optString("comparativa_poblacional")
             )
         }
 

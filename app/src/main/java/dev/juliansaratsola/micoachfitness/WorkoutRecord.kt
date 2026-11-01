@@ -35,7 +35,11 @@ data class WorkoutRecord(
     val sections: List<SectionReview>,
     val comparison: String,
     val suggestions: List<String>,
-    val followUpQuestions: List<String>
+    val followUpQuestions: List<String>,
+    val tecnica: String = "",
+    val cardio: String = "",
+    val potenciaRendimiento: String = "",
+    val comparativaPoblacional: String = ""
 ) {
     fun paceText(): String = formatPace(paceSecPerKm)
 
