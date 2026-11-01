@@ -19,6 +19,8 @@ data class HealthSession(
     val maxPowerW: Double? = null,
     val maxCadenceSpm: Double? = null,
     val maxSpeedKmh: Double? = null,
+    val avgSpeedKmh: Double? = null,
+    val minSpeedKmh: Double? = null,
     val activeKcal: Double? = null,
     val totalKcal: Double? = null
 ) {
@@ -69,16 +71,21 @@ data class HealthSession(
         maxPowerW?.let { lines += "Potencia máxima: %.0f W".format(Locale.US, it) }
         cadenceSpm?.let { lines += "Cadencia media: %.0f ppm".format(Locale.US, it) }
         maxCadenceSpm?.let { lines += "Cadencia máxima: %.0f ppm".format(Locale.US, it) }
-        maxSpeedKmh?.let { lines += "Velocidad máxima: %.1f km/h".format(Locale.US, it) }
-        activeKcal?.let { lines += "Calorías activas: %.0f".format(Locale.US, it) }
-        totalKcal?.let { lines += "Calorías totales: %.0f".format(Locale.US, it) }
-        elevationGainM?.let { lines += "Ascenso: %.0f m".format(Locale.US, it) }
         val missing = mutableListOf<String>()
         if (distanceM == null) missing += "distancia"
         if (avgHr == null) missing += "frecuencia cardíaca"
         if (avgPowerW == null) missing += "potencia"
         if (cadenceSpm == null) missing += "cadencia"
-        missing += "zancada, tiempo de contacto, oscilación vertical, TE aeróbico, Body Battery y temperatura (salvo que aparezcan en capturas adjuntas)"
+        if (avgSpeedKmh == null) missing += "velocidad media"
+        if (minSpeedKmh == null) missing += "velocidad mínima"
+        if (maxSpeedKmh == null) missing += "velocidad máxima"
+        avgSpeedKmh?.let { lines += "Velocidad media registrada: %.1f km/h".format(Locale.US, it) }
+        minSpeedKmh?.let { lines += "Velocidad mínima registrada: %.1f km/h".format(Locale.US, it) }
+        maxSpeedKmh?.let { lines += "Velocidad máxima: %.1f km/h".format(Locale.US, it) }
+        activeKcal?.let { lines += "Calorías activas: %.0f".format(Locale.US, it) }
+        totalKcal?.let { lines += "Calorías totales: %.0f".format(Locale.US, it) }
+        elevationGainM?.let { lines += "Ascenso: %.0f m".format(Locale.US, it) }
+        missing += "ritmo en movimiento, GAP, velocidad óptima, zancada, tiempo de contacto, oscilación vertical, TE aeróbico, Body Battery y temperatura (salvo que aparezcan en capturas adjuntas)"
         lines += "No disponibles (déjalos en null, no los inventes): ${missing.joinToString(", ")}"
         return lines.joinToString("\n")
     }

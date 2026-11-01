@@ -10,12 +10,12 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 
-/** Bottom tab bar shared by every top-level screen: Inicio, Coach, [WIP] and Config. */
+/** Bottom tab bar shared by every top-level screen: Inicio, Coach, Historial and Config. */
 object BottomNav {
     enum class Tab(val iconRes: Int, val labelRes: Int, val target: Class<out Activity>) {
         HOME(R.drawable.ic_nav_home, R.string.tab_home, MainActivity::class.java),
         COACH(R.drawable.ic_nav_coach, R.string.tab_coach, CoachActivity::class.java),
-        WIP(R.drawable.ic_nav_wip, R.string.tab_wip, WipActivity::class.java),
+        HISTORY(R.drawable.ic_nav_history, R.string.tab_history, HistoryActivity::class.java),
         SETTINGS(R.drawable.ic_nav_settings, R.string.tab_settings, SettingsActivity::class.java)
     }
 

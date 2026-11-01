@@ -42,9 +42,8 @@
     <string name="hc_rationale">Mi Coach lee tus entrenamientos de Health Connect solo para generar el review.</string>
     <string name="tab_home">Inicio</string>
     <string name="tab_coach">Coach</string>
-    <string name="tab_wip">Próximamente</string>
+    <string name="tab_history">Historial</string>
     <string name="tab_settings">Config</string>
-    <string name="wip_text">Próximamente</string>
     <string name="setup_welcome">¡Bienvenido! Primero configura la app: concede los permisos, el acceso de uso y guarda tu API key de Gemini. Después vuelve a Inicio y activa el monitoreo.</string>
     <string name="hc_choose">¿Qué entrenamiento analizar?</string>
     <string name="coach_pending">Capturas listas para analizar: %1$d · toca para gestionarlas</string>
@@ -62,9 +61,6 @@
     <string name="coach_comparison">📈 Comparativa con tus %1$d sesiones previas</string>
     <string name="coach_suggestions">💡 Sugerencias</string>
     <string name="coach_followup">❓ Para la próxima</string>
-    <string name="coach_history">🗂 Historial</string>
-    <string name="coach_history_count">Historial · %1$d</string>
-    <string name="coach_history_empty">Todavía no hay entrenamientos guardados.</string>
     <string name="coach_history_delete">Eliminar</string>
     <string name="coach_history_delete_confirm_title">¿Eliminar este entrenamiento?</string>
     <string name="coach_history_delete_confirm">Se quitará del historial local y dejará de influir en tus comparativas y tu Form Score. Esta acción no se puede deshacer.</string>
@@ -142,4 +138,13 @@
     <string name="age_saved">Edad guardada.</string>
     <string name="age_cleared">Edad borrada: se usarán %1$d ppm como frecuencia cardíaca máxima.</string>
     <string name="age_invalid">Escribe una edad entre %1$d y %2$d años.</string>
+    <string name="history_title">Historial de entrenamientos</string>
+    <string name="history_intro">Tus reviews guardados, del más reciente al más antiguo.</string>
+    <string name="history_empty">Todavía no hay entrenamientos guardados. Genera un review en Coach para empezar tu historial.</string>
+    <string name="reset_app_action">Restablecer datos de la app</string>
+    <string name="reset_app_title">¿Restablecer Mi Coach Fitness?</string>
+    <string name="reset_app_message">Se eliminarán el historial de entrenamientos, la conversación del Coach, las capturas pendientes, la API key, la edad y las preferencias de monitoreo. El monitoreo se detendrá. Esta acción no se puede deshacer. Los permisos concedidos en Android y Health Connect no se revocarán.</string>
+    <string name="reset_app_done">Datos locales restablecidos. Los permisos de Android siguen concedidos.</string>
+    <string name="reset_app_failed">No se pudo confirmar el restablecimiento local. Vuelve a intentarlo y comprueba el espacio de almacenamiento.</string>
+    <string name="coach_reset_interrupted">Los datos se restablecieron durante el análisis; el resultado no se guardó.</string>
 </resources>

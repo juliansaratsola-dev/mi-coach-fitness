@@ -41,6 +41,8 @@ class CoachChatStore(context: Context) {
         prefs.edit().putString(KEY_MESSAGES, array.toString()).apply()
     }
 
+    fun clear(): Boolean = prefs.edit().clear().commit()
+
     companion object {
         private const val PREFS = "coach_chat"
         private const val KEY_MESSAGES = "messages"

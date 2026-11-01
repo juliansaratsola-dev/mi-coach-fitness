@@ -32,6 +32,18 @@ class HealthSessionTest {
     }
 
     @Test
+    fun promptTextIncludesAvailableHealthConnectSpeedMetrics() {
+        val text = session.copy(
+            avgSpeedKmh = 10.8,
+            minSpeedKmh = 2.4,
+            maxSpeedKmh = 13.7
+        ).toPromptText()
+        assertTrue(text.contains("Velocidad media registrada: 10.8 km/h"))
+        assertTrue(text.contains("Velocidad mínima registrada: 2.4 km/h"))
+        assertTrue(text.contains("Velocidad máxima: 13.7 km/h"))
+    }
+
+    @Test
     fun pickBestSkipsTinyLaterSession() {
         val tiny = session.copy(startMillis = 3_000_000L, endMillis = 4_300_000L, exerciseType = 0, distanceM = 90.0)
         assertEquals(session, HealthSession.pickBest(listOf(session, tiny)))

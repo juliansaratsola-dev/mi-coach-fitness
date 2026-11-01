@@ -17,6 +17,9 @@ class MonitorPreferences(context: Context) {
             prefs.edit().putBoolean(KEY_SETUP, value).apply()
         }
 
+    val resetVersion: Long
+        get() = prefs.getLong(KEY_RESET_VERSION, 0L)
+
     var geminiApiKey: String
         get() = prefs.getString(KEY_API, "").orEmpty()
         set(value) {
@@ -69,6 +72,16 @@ class MonitorPreferences(context: Context) {
         editor.apply()
     }
 
+    fun resetLocalSettings(): Boolean = synchronized(RESET_LOCK) {
+        val setupWasShown = setupShown
+        val nextVersion = resetVersion + 1
+        prefs.edit()
+            .clear()
+            .putBoolean(KEY_SETUP, setupWasShown)
+            .putLong(KEY_RESET_VERSION, nextVersion)
+            .commit()
+    }
+
     fun isHandled(id: Long): Boolean = handledIds().contains(id)
 
     fun markHandled(id: Long) {
@@ -84,6 +97,7 @@ class MonitorPreferences(context: Context) {
     }
 
     companion object {
+        internal val RESET_LOCK = Any()
         private const val PREFS = "monitor_prefs"
         private const val KEY_ENABLED = "enabled"
         private const val KEY_HANDLED = "handled_ids"
@@ -94,6 +108,7 @@ class MonitorPreferences(context: Context) {
         private const val KEY_HC_WATCH = "hc_watch"
         private const val KEY_AGE = "user_age"
         private const val KEY_PENDING = "pending_captures"
+        private const val KEY_RESET_VERSION = "local_reset_version"
         private const val MAX_HANDLED = 50
         private const val MAX_PENDING = 6
     }

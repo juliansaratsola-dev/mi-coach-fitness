@@ -82,6 +82,8 @@ class HealthConnectReader(private val context: Context) {
             minHr = aggregate(range, origin, HeartRateRecord.BPM_MIN) { it },
             maxPowerW = aggregate(range, origin, PowerRecord.POWER_MAX) { it.inWatts },
             maxCadenceSpm = aggregate(range, origin, StepsCadenceRecord.STEPS_CADENCE_RATE_MAX) { it },
+            avgSpeedKmh = aggregate(range, origin, SpeedRecord.SPEED_AVG) { it.inMetersPerSecond * 3.6 },
+            minSpeedKmh = aggregate(range, origin, SpeedRecord.SPEED_MIN) { it.inMetersPerSecond * 3.6 },
             maxSpeedKmh = aggregate(range, origin, SpeedRecord.SPEED_MAX) { it.inMetersPerSecond * 3.6 },
             activeKcal = aggregate(range, origin, ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL) { it.inCalories / 1000.0 },
             totalKcal = aggregate(range, origin, TotalCaloriesBurnedRecord.ENERGY_TOTAL) { it.inCalories / 1000.0 }
