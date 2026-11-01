@@ -15,7 +15,8 @@ class HealthSessionTest {
         maxHr = 171,
         avgPowerW = null,
         elevationGainM = 8.0,
-        cadenceSpm = null
+        cadenceSpm = null,
+        origin = HealthSession.GARMIN_PACKAGE
     )
 
     @Test
@@ -44,14 +45,14 @@ class HealthSessionTest {
     }
 
     @Test
-    fun pickBestSkipsTinyLaterSession() {
-        val tiny = session.copy(startMillis = 3_000_000L, endMillis = 4_300_000L, exerciseType = 0, distanceM = 90.0)
-        assertEquals(session, HealthSession.pickBest(listOf(session, tiny)))
+    fun pickBestIgnoresSessionsFromOtherApps() {
+        val phone = session.copy(startMillis = 3_000_000L, endMillis = 4_300_000L, distanceM = 900.0, origin = "com.google.android.apps.fitness")
+        assertEquals(session, HealthSession.pickBest(listOf(phone, session)))
     }
 
     @Test
-    fun pickBestFallsBackToLatest() {
-        val tiny = session.copy(endMillis = 5_000_000L, distanceM = null)
-        assertEquals(tiny, HealthSession.pickBest(listOf(tiny)))
+    fun pickBestReturnsNullWithoutGarminSessions() {
+        val phone = session.copy(origin = "com.google.android.apps.fitness")
+        assertEquals(null, HealthSession.pickBest(listOf(phone, session.copy(origin = null))))
     }
 }
